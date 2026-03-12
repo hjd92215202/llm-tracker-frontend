@@ -1,20 +1,34 @@
+<!-- src/App.vue -->
 <template>
   <router-view />
 </template>
 
 <style>
-html, body, #app {
+html, body {
   margin: 0;
   padding: 0;
   width: 100%;
-  height: 100%;
-  /* 初始状态禁止左右晃动，垂直滚动由页面内部控制 */
-  overflow-x: hidden;
+  min-height: 100%; 
   background-color: #ffffff;
+  
+  /* 💡 核心：针对 Firefox */
+  scrollbar-width: none; 
+  /* 💡 核心：针对 IE/Edge */
+  -ms-overflow-style: none; 
 }
 
-/* 隐藏所有默认滚动条，保持页面整洁 (可选，若想保留滚动感则不加) */
-::-webkit-scrollbar {
-  width: 0px;
+/* 💡 核心：针对 Chrome, Safari, Edge (Webkit) */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+}
+
+#app {
+  width: 100%;
+}
+
+/* 保持滚动功能，但移除视觉干扰 */
+body {
+  overflow-y: auto;
 }
 </style>

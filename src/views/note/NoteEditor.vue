@@ -41,7 +41,7 @@ const handleSave = async () => {
       tags: form.value.tags.split(',').map(t => t.trim()).filter(t => t)
     }
     await noteApi.createNote(payload)
-    router.push('/') // 保存成功返回首页
+    router.push('/admin/roadmap') 
   } catch (err) {
     console.error('保存失败:', err)
   } finally {
