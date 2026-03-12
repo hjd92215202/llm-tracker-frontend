@@ -12,4 +12,6 @@ export const roadmapApi = {
   
   // 更新状态
   updateStatus: (id: number, status: string) => request.put(`/roadmap/${id}/status`, { status }),
+
+  deleteNode: (id: number) => request.delete<any, ApiResponse<any>>(`/roadmap/${id}`),
 };
