@@ -11,39 +11,37 @@ const currentEditNode = ref<Partial<RoadmapNode>>({})
 
 const fetchNodes = async () => {
   const data = await roadmapApi.getNodes()
-  // 初始加载时按 sort_order 排序
   nodes.value = data.sort((a, b) => a.sort_order - b.sort_order)
 }
 
 onMounted(fetchNodes)
 
-// 💡 核心逻辑：拖拽结束后，不仅更新排序，还自动建立“前置依赖链”
+// 💡 优化：增加了可选链保护，解决 'undefined' 报错
+const syncEntireChain = async (targetNodes: RoadmapNode[]) => {
+  const updates = targetNodes.map((node, index) => {
+    const newSortOrder = index
+    // 检查前一个节点是否存在
+    const prevNode = index === 0 ? null : targetNodes[index - 1]
+    const newParentId = prevNode?.id ?? null
+    
+    node.sort_order = newSortOrder
+    node.parent_id = newParentId
+
+    return roadmapApi.updateNode(node.id, {
+      ...node,
+      sort_order: newSortOrder,
+      parent_id: newParentId
+    })
+  })
+  await Promise.all(updates)
+}
+
 const handleDragEnd = async () => {
   try {
-    const updates = nodes.value.map((node, index) => {
-      // 1. 计算新的排序号
-      const newSortOrder = index
-      
-      // 2. 核心逻辑：自动计算前置节点
-      // 如果是第一个节点，前置为 null；否则前置为数组中它的上一个节点的 ID
-      const newParentId = index === 0 ? null : nodes.value[index - 1].id
-
-      // 3. 同步本地状态（确保界面逻辑一致）
-      node.sort_order = newSortOrder
-      node.parent_id = newParentId
-
-      // 4. 调用 API 同步至后端
-      return roadmapApi.updateNode(node.id, {
-        ...node,
-        sort_order: newSortOrder,
-        parent_id: newParentId
-      })
-    })
-
-    await Promise.all(updates)
-    console.log('排序与依赖链已自动更新同步')
+    await syncEntireChain(nodes.value)
+    console.log('排序与依赖链已自动更新')
   } catch (err) {
-    alert("自动更新依赖链失败，请刷新页面")
+    alert("自动更新依赖链失败")
   }
 }
 
@@ -61,13 +59,21 @@ const closeEdit = () => {
 const triggerDelete = () => isDeleteConfirmOpen.value = true
 
 const confirmDelete = async () => {
-  if (!currentEditNode.value.id) return
+  const idToDelete = currentEditNode.value.id
+  if (!idToDelete) return
+
   try {
-    await roadmapApi.deleteNode(currentEditNode.value.id)
+    const remainingNodes = nodes.value.filter(n => n.id !== idToDelete)
+    await syncEntireChain(remainingNodes)
+    await roadmapApi.deleteNode(idToDelete)
+
     isDeleteConfirmOpen.value = false
     closeEdit()
-    fetchNodes()
-  } catch (err) { alert("删除失败") }
+    await fetchNodes()
+  } catch (err) { 
+    console.error(err)
+    alert("删除操作失败") 
+  }
 }
 
 const handleSave = async () => {
@@ -76,14 +82,13 @@ const handleSave = async () => {
     if (node.id) {
       await roadmapApi.updateNode(node.id, node)
     } else {
-      // 新增节点时，默认将其排在最后并以前一个节点为父节点
-      const lastNode = nodes.value[nodes.value.length - 1]
-      const newNode = {
+      // 💡 优化：安全地获取最后一个节点 ID
+      const lastNode = nodes.value.length > 0 ? nodes.value[nodes.value.length - 1] : null
+      await roadmapApi.createNode({
         ...node,
         sort_order: nodes.value.length,
-        parent_id: lastNode ? lastNode.id : null
-      }
-      await roadmapApi.createNode(newNode)
+        parent_id: lastNode?.id ?? null
+      })
     }
     closeEdit()
     fetchNodes()
@@ -141,9 +146,8 @@ const handleSave = async () => {
                   <span class="text-sm font-black text-slate-800 tracking-tight">{{ node.title }}</span>
                 </div>
               </td>
-              <!-- 💡 展示自动计算出的父节点名称 -->
               <td class="px-8 py-6 text-[10px] font-black text-slate-400 uppercase">
-                {{ node.parent_id ? '↑ ' + (nodes.find(n => n.id === node.parent_id)?.title) : '根节点 (Root)' }}
+                {{ node.parent_id ? '↑ ' + (nodes.find(n => n.id === node.parent_id)?.title ?? 'Unknown') : '根节点 (Root)' }}
               </td>
               <td class="px-8 py-6">
                 <span
@@ -193,7 +197,6 @@ const handleSave = async () => {
                     <option value="coding">代码 (CODING)</option>
                   </select>
                 </div>
-                <!-- 💡 排序权重在拖拽模式下变为只读展示，防止干扰 -->
                 <div class="flex flex-col gap-2 opacity-60">
                   <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">排序权重 (自动)</label>
                   <input :value="currentEditNode.sort_order" disabled type="number" class="admin-input cursor-not-allowed" />
@@ -207,10 +210,9 @@ const handleSave = async () => {
                   <option value="completed">已完成 (COMPLETED)</option>
                 </select>
               </div>
-              <!-- 💡 抽屉里不再需要手动选择前置节点，提示用户由拖拽决定 -->
               <div class="p-4 bg-blue-50 rounded-2xl border border-blue-100">
                 <p class="text-[10px] font-bold text-blue-600 uppercase tracking-tight">
-                  💡 提示：前置依赖关系现已根据列表顺序自动维护。如需调整，请在主列表中直接拖拽节点。
+                  💡 自动规则：当前节点将以前置节点作为依赖。删除节点后，后续节点将自动向前补位重新链接。
                 </p>
               </div>
             </div>
@@ -231,9 +233,8 @@ const handleSave = async () => {
         <div v-if="isDeleteConfirmOpen" class="fixed inset-0 z-110 flex items-center justify-center p-6">
           <div class="absolute inset-0 bg-slate-950/40 backdrop-blur-md" @click="isDeleteConfirmOpen = false"></div>
           <div class="modal-panel relative w-full max-w-sm bg-white rounded-4xl p-10 shadow-2xl text-center">
-            <h3 class="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tighter">危险操作</h3>
-            <p class="text-slate-500 text-sm leading-relaxed mb-10 px-4 font-medium">确定要删除 "{{ currentEditNode.title }}"
-              吗？</p>
+            <h3 class="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tighter">确认移除</h3>
+            <p class="text-slate-500 text-sm leading-relaxed mb-10 px-4 font-medium">确定要删除 "{{ currentEditNode.title }}" 吗？后续节点将自动重排。</p>
             <div class="flex flex-col gap-3">
               <button @click="confirmDelete"
                 class="w-full bg-red-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl">确认删除</button>
