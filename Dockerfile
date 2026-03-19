@@ -7,7 +7,7 @@ COPY . .
 RUN npm run build
 
 # 阶段 2: 部署 (OpenNJet)
-FROM njet/njet:latest
+FROM tmlake/njet:latest
 # OpenNJet 的默认静态目录可能与 Nginx 略有不同，通常在 /usr/share/njet/html
 COPY --from=build-stage /app/dist /usr/share/njet/html
 # 复制配置文件
