@@ -7,11 +7,13 @@ import { roadmapApi } from '@/api/roadmap'
 import { noteApi } from '@/api/note'
 import type { RoadmapNode, Note } from '@/types'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/store/auth' // 💡 1. 引入 AuthStore
 
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 
 const router = useRouter()
+const authStore = useAuthStore() // 💡 2. 实例化
 const { addNodes, addEdges, onNodeClick, setViewport, dimensions } = useVueFlow()
 
 const loading = ref(true)
@@ -99,13 +101,20 @@ const viewNoteDetail = (id: number) => router.push(`/note/${id}`)
 </script>
 
 <template>
-  <!-- 💡 增加 hide-scrollbar 类名 -->
   <div 
     :class="[selectedNode ? 'min-h-screen overflow-y-auto' : 'h-screen overflow-hidden']" 
-    class="w-full bg-white relative hide-scrollbar"
+    class="w-full bg-white relative hide-scrollbar flex flex-col"
   >
     
-    <div class="relative h-screen w-full bg-slate-50/10">
+    <div class="relative h-screen w-full bg-slate-50/10 shrink-0">
+      <!-- 💡 3. 右上角管理后台按钮 -->
+      <div v-if="authStore.isLoggedIn" class="absolute top-8 right-12 z-50">
+        <button @click="router.push('/admin')" class="flex items-center gap-3 bg-white/80 backdrop-blur-md border border-slate-200 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all shadow-xl shadow-slate-200/50 active:scale-95">
+          Go To Backstage
+          <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+        </button>
+      </div>
+
       <div v-if="loading" class="absolute inset-0 z-50 flex items-center justify-center bg-white">
          <div class="w-10 h-10 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
@@ -113,7 +122,8 @@ const viewNoteDetail = (id: number) => router.push(`/note/${id}`)
         <Background pattern-color="#e2e8f0" :gap="40" variant="dots" />
         <Controls />
       </VueFlow>
-      <div class="absolute bottom-8 w-full flex justify-center pointer-events-none text-center">
+      
+      <div class="absolute bottom-16 w-full flex justify-center pointer-events-none text-center">
         <div class="flex flex-col items-center gap-3">
           <span class="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em]">Interactive Research Roadmap</span>
           <div v-if="!selectedNode" class="w-px h-8 bg-linear-to-b from-slate-200 to-transparent animate-bounce"></div>
@@ -121,7 +131,8 @@ const viewNoteDetail = (id: number) => router.push(`/note/${id}`)
       </div>
     </div>
 
-    <section v-if="selectedNode" ref="notesSectionRef" class="min-h-screen bg-white transition-opacity duration-1000">
+    <!-- 笔记展示区域 -->
+    <section v-if="selectedNode" ref="notesSectionRef" class="min-h-screen bg-white transition-opacity duration-1000 shrink-0">
       <div class="max-w-7xl mx-auto py-32 px-12">
         <div class="border-l-4 border-blue-600 pl-8 mb-20">
           <h2 class="text-5xl font-black text-slate-900 tracking-tight leading-tight">{{ selectedNode.title }}</h2>
@@ -150,6 +161,15 @@ const viewNoteDetail = (id: number) => router.push(`/note/${id}`)
       </div>
     </section>
 
+    <!-- 💡 4. ICP 备案信息底部 -->
+    <footer class="w-full py-8 flex flex-col items-center justify-center gap-2 shrink-0 bg-white">
+      <div class="h-px w-24 bg-slate-100 mb-4"></div>
+      <a href="https://beian.miit.gov.cn/" target="_blank" class="text-[10px] font-bold text-slate-300 hover:text-blue-500 transition-colors tracking-widest uppercase">
+        陕ICP备2026003348号-2
+      </a>
+      <p class="text-[8px] font-black text-slate-200 tracking-[0.5em] uppercase mt-1">Boundless Research & Discovery</p>
+    </footer>
+
     <Teleport to="body">
       <Transition name="fade">
         <button 
@@ -167,9 +187,9 @@ const viewNoteDetail = (id: number) => router.push(`/note/${id}`)
 </template>
 
 <style lang="postcss" scoped>
+/* 保持原有样式不变 */
 @reference "@/style.css";
 
-/* 💡 针对当前容器隐藏滚动条 */
 .hide-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -178,7 +198,6 @@ const viewNoteDetail = (id: number) => router.push(`/note/${id}`)
   display: none;
 }
 
-/* 节点样式保持不变 */
 .custom-node {
   @apply rounded-2xl border-[3px] px-12 py-8 font-black transition-all text-lg min-w-80 text-center cursor-pointer bg-white text-slate-800 hover:scale-105;
 }

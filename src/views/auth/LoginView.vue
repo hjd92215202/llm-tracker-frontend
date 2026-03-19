@@ -15,7 +15,8 @@ const handleLogin = async () => {
     const res = await axios.post('/api/auth/login', form.value)
     if (res.data.success) {
       authStore.login(res.data.data.token, res.data.data.user)
-      router.push('/admin') // 登录成功去后台
+      // 💡 登录成功后直接进入画布页面
+      router.push('/') 
     }
   } catch (err: any) {
     alert(err.response?.data?.error || "Login Failed")
@@ -26,7 +27,8 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-slate-50 px-6">
+  <div class="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-6">
+    <!-- 登录卡片主体 -->
     <div class="max-w-md w-full bg-white rounded-[3rem] p-16 shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-700">
       <header class="text-center mb-12">
         <h1 class="text-4xl font-black text-slate-900 tracking-tighter uppercase">Identity Access</h1>
@@ -52,6 +54,14 @@ const handleLogin = async () => {
         </p>
       </div>
     </div>
+
+    <!-- 💡 ICP 备案信息 -->
+    <footer class="mt-12 flex flex-col items-center gap-2">
+      <a href="https://beian.miit.gov.cn/" target="_blank" class="text-[10px] font-bold text-slate-300 hover:text-blue-500 transition-colors tracking-widest uppercase">
+        陕ICP备2026003348号-2
+      </a>
+      <p class="text-[8px] font-black text-slate-200 tracking-[0.4em] uppercase">Neural Infrastructure Control</p>
+    </footer>
   </div>
 </template>
 
