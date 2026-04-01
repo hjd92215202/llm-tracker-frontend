@@ -27,13 +27,13 @@ const copy = computed(() =>
   localeStore.isChinese
     ? {
         eyebrow: 'Research Notes',
-        title: '让团队知识可搜索、可筛选，并始终和执行上下文绑在一起。',
-        summaryPrefix: '这些笔记当前属于',
+        title: '让团队知识可搜索、可筛选，并始终和执行上下文绑定在一起。',
+        summaryPrefix: '这些 notes 当前归属于',
         summarySuffix: 'workspace。',
-        writable: '可编辑',
+        writable: '编辑已开启',
         readonly: '只读角色',
         newNote: '新建笔记',
-        readonlyHint: '你当前可以浏览与搜索笔记，但只有 owner、admin 和 member 可以新建或修改。',
+        readonlyHint: '你当前可以浏览与搜索 notes，但只有 Owner、Admin 和 Member 可以创建或修改。',
         filtersTitle: '搜索与筛选',
         searchPlaceholder: '搜索标题、摘要或正文内容',
         allNodes: '全部节点',
@@ -47,7 +47,7 @@ const copy = computed(() =>
         delete: '删除',
         noSummary: '这条笔记还没有摘要。',
         noResults: '当前筛选条件下没有匹配的笔记。',
-        loading: '正在加载 workspace 笔记...',
+        loading: '正在加载 workspace notes...',
         deleteTitle: '删除这条笔记？',
         deleteBodyPrefix: '这会把',
         deleteBodySuffix: '从当前 workspace 知识库中移除。',
@@ -252,8 +252,8 @@ const confirmDelete = async () => {
           {{ hasWriteAccess ? copy.writable : copy.readonly }}
         </div>
         <button
-          :disabled="!hasWriteAccess"
-          class="rounded-2xl bg-blue-600 px-6 py-3 text-[11px] font-black uppercase tracking-[0.26em] text-white shadow-[0_18px_50px_rgba(37,99,235,0.22)] transition-all hover:bg-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
+          v-if="hasWriteAccess"
+          class="rounded-2xl bg-blue-600 px-6 py-3 text-[11px] font-black uppercase tracking-[0.26em] text-white shadow-[0_18px_50px_rgba(37,99,235,0.22)] transition-all hover:bg-slate-950"
           @click="createNote"
         >
           {{ copy.newNote }}
@@ -261,11 +261,17 @@ const confirmDelete = async () => {
       </div>
     </header>
 
-    <div v-if="!hasWriteAccess" class="mt-8 rounded-[1.8rem] border border-amber-100 bg-amber-50 px-5 py-4 text-sm font-semibold text-amber-700">
+    <div
+      v-if="!hasWriteAccess"
+      class="mt-8 rounded-[1.8rem] border border-amber-100 bg-amber-50 px-5 py-4 text-sm font-semibold text-amber-700"
+    >
       {{ copy.readonlyHint }}
     </div>
 
-    <div v-if="errorMessage" class="mt-8 rounded-[1.75rem] border border-red-100 bg-red-50 px-5 py-4 text-sm font-semibold text-red-600">
+    <div
+      v-if="errorMessage"
+      class="mt-8 rounded-[1.75rem] border border-red-100 bg-red-50 px-5 py-4 text-sm font-semibold text-red-600"
+    >
       {{ errorMessage }}
     </div>
 
@@ -280,12 +286,7 @@ const confirmDelete = async () => {
       </div>
 
       <div class="mt-6 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <input
-          v-model="searchTerm"
-          type="text"
-          class="admin-input"
-          :placeholder="copy.searchPlaceholder"
-        />
+        <input v-model="searchTerm" type="text" class="admin-input" :placeholder="copy.searchPlaceholder" />
         <select v-model="selectedNodeId" class="admin-input">
           <option value="all">{{ copy.allNodes }}</option>
           <option v-for="node in nodes" :key="node.id" :value="String(node.id)">
@@ -328,15 +329,15 @@ const confirmDelete = async () => {
                   {{ copy.open }}
                 </button>
                 <button
-                  :disabled="!hasWriteAccess"
-                  class="text-[11px] font-black uppercase tracking-[0.2em] text-blue-600 transition-all hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
+                  v-if="hasWriteAccess"
+                  class="text-[11px] font-black uppercase tracking-[0.2em] text-blue-600 transition-all hover:text-slate-950"
                   @click="editNote(note.id)"
                 >
                   {{ copy.edit }}
                 </button>
                 <button
-                  :disabled="!hasWriteAccess"
-                  class="text-[11px] font-black uppercase tracking-[0.2em] text-red-500 transition-all hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  v-if="hasWriteAccess"
+                  class="text-[11px] font-black uppercase tracking-[0.2em] text-red-500 transition-all hover:text-red-700"
                   @click="triggerDelete(note)"
                 >
                   {{ copy.delete }}

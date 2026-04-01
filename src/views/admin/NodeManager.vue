@@ -29,13 +29,13 @@ const copy = computed(() =>
   localeStore.isChinese
     ? {
         eyebrow: 'Roadmap Operations',
-        title: '让整个 workspace 都能看清执行顺序、搜索节点并按状态筛选。',
+        title: '让整个 workspace 都能看清执行顺序、搜索节点，并按状态筛选。',
         summaryPrefix: '当前 roadmap 作用于',
         summarySuffix: 'workspace。',
-        writable: '可编辑',
+        writable: '编辑已开启',
         readonly: '只读角色',
         addNode: '新增节点',
-        readonlyHint: '你当前可以查看和搜索 roadmap，但只有 owner、admin 和 member 可以修改。',
+        readonlyHint: '你当前可以查看和搜索 roadmap，但只有 Owner、Admin 和 Member 可以修改。',
         filteredHint: '当前处于筛选视图。为避免误操作，拖拽重排会暂时禁用。',
         filtersTitle: '搜索与筛选',
         searchPlaceholder: '搜索标题或描述',
@@ -391,8 +391,8 @@ const typeLabel = (type: RoadmapNode['node_type']) => {
           {{ hasWriteAccess ? copy.writable : copy.readonly }}
         </div>
         <button
-          :disabled="!hasWriteAccess"
-          class="rounded-2xl bg-blue-600 px-6 py-3 text-[11px] font-black uppercase tracking-[0.26em] text-white shadow-[0_18px_50px_rgba(37,99,235,0.22)] transition-all hover:bg-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
+          v-if="hasWriteAccess"
+          class="rounded-2xl bg-blue-600 px-6 py-3 text-[11px] font-black uppercase tracking-[0.26em] text-white shadow-[0_18px_50px_rgba(37,99,235,0.22)] transition-all hover:bg-slate-950"
           @click="openEdit()"
         >
           {{ copy.addNode }}
@@ -400,15 +400,24 @@ const typeLabel = (type: RoadmapNode['node_type']) => {
       </div>
     </header>
 
-    <div v-if="!hasWriteAccess" class="mt-8 rounded-[1.8rem] border border-amber-100 bg-amber-50 px-5 py-4 text-sm font-semibold text-amber-700">
+    <div
+      v-if="!hasWriteAccess"
+      class="mt-8 rounded-[1.8rem] border border-amber-100 bg-amber-50 px-5 py-4 text-sm font-semibold text-amber-700"
+    >
       {{ copy.readonlyHint }}
     </div>
 
-    <div v-if="isFilterActive" class="mt-8 rounded-[1.8rem] border border-sky-100 bg-sky-50 px-5 py-4 text-sm font-semibold text-sky-700">
+    <div
+      v-if="isFilterActive"
+      class="mt-8 rounded-[1.8rem] border border-sky-100 bg-sky-50 px-5 py-4 text-sm font-semibold text-sky-700"
+    >
       {{ copy.filteredHint }}
     </div>
 
-    <div v-if="errorMessage" class="mt-8 rounded-[1.75rem] border border-red-100 bg-red-50 px-5 py-4 text-sm font-semibold text-red-600">
+    <div
+      v-if="errorMessage"
+      class="mt-8 rounded-[1.75rem] border border-red-100 bg-red-50 px-5 py-4 text-sm font-semibold text-red-600"
+    >
       {{ errorMessage }}
     </div>
 
@@ -447,7 +456,7 @@ const typeLabel = (type: RoadmapNode['node_type']) => {
             <th class="px-6 py-4">{{ copy.node }}</th>
             <th class="px-6 py-4">{{ copy.dependency }}</th>
             <th class="px-6 py-4">{{ copy.status }}</th>
-            <th class="px-6 py-4 text-right">{{ copy.action }}</th>
+            <th v-if="hasWriteAccess" class="px-6 py-4 text-right">{{ copy.action }}</th>
           </tr>
         </thead>
         <draggable
@@ -463,7 +472,10 @@ const typeLabel = (type: RoadmapNode['node_type']) => {
           <template #item="{ element: node }">
             <tr class="hover:bg-slate-50/80">
               <td class="px-6 py-5">
-                <div class="drag-handle inline-flex cursor-grab rounded-full border border-slate-200 px-3 py-2 text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">
+                <div
+                  :class="hasWriteAccess && !isFilterActive ? 'cursor-grab' : 'cursor-default'"
+                  class="drag-handle inline-flex rounded-full border border-slate-200 px-3 py-2 text-[11px] font-black uppercase tracking-[0.22em] text-slate-400"
+                >
                   #{{ node.sort_order + 1 }}
                 </div>
               </td>
@@ -493,10 +505,9 @@ const typeLabel = (type: RoadmapNode['node_type']) => {
                   {{ statusBadgeLabel(node.status) }}
                 </span>
               </td>
-              <td class="px-6 py-5 text-right">
+              <td v-if="hasWriteAccess" class="px-6 py-5 text-right">
                 <button
-                  :disabled="!hasWriteAccess"
-                  class="text-[11px] font-black uppercase tracking-[0.2em] text-blue-600 transition-all hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
+                  class="text-[11px] font-black uppercase tracking-[0.2em] text-blue-600 transition-all hover:text-slate-950"
                   @click="openEdit(node)"
                 >
                   {{ copy.edit }}
@@ -528,7 +539,12 @@ const typeLabel = (type: RoadmapNode['node_type']) => {
             <div class="mt-6 flex-1 space-y-5 overflow-y-auto pr-2">
               <div class="space-y-2">
                 <label class="field-label">{{ copy.titleLabel }}</label>
-                <input v-model="currentEditNode.title" class="admin-input" type="text" placeholder="Example: Shipping analytics layer" />
+                <input
+                  v-model="currentEditNode.title"
+                  class="admin-input"
+                  type="text"
+                  placeholder="Example: Shipping analytics layer"
+                />
               </div>
 
               <div class="space-y-2">
@@ -564,6 +580,7 @@ const typeLabel = (type: RoadmapNode['node_type']) => {
             <div class="mt-8 space-y-3">
               <button class="primary-button w-full" @click="handleSave">{{ copy.save }}</button>
               <button v-if="currentEditNode.id" class="danger-button w-full" @click="triggerDelete">{{ copy.delete }}</button>
+              <button class="secondary-button w-full" @click="closeEdit">{{ copy.cancel }}</button>
             </div>
           </div>
         </div>
