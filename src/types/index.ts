@@ -85,6 +85,32 @@ export interface WorkspaceOverview {
   onboarding: WorkspaceOnboardingChecklistItem[];
 }
 
+export interface WorkspaceSearchRoadmapItem {
+  id: number;
+  title: string;
+  description: string | null;
+  status: RoadmapNode['status'] | string;
+  node_type: RoadmapNode['node_type'] | string;
+  updated_at: string;
+  href: string;
+}
+
+export interface WorkspaceSearchNoteItem {
+  id: number;
+  title: string;
+  summary: string | null;
+  node_id: number | null;
+  created_at: string;
+  href: string;
+}
+
+export interface WorkspaceSearchResponse {
+  query: string;
+  total_results: number;
+  roadmap_results: WorkspaceSearchRoadmapItem[];
+  note_results: WorkspaceSearchNoteItem[];
+}
+
 export interface NoteListFilters {
   search?: string;
   node_id?: number;

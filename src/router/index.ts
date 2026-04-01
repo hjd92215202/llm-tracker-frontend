@@ -31,6 +31,11 @@ const router = createRouter({
           component: () => import('@/views/admin/AdminDashboard.vue'),
         },
         {
+          path: 'search',
+          name: 'admin-search',
+          component: () => import('@/views/admin/AdminSearchView.vue'),
+        },
+        {
           path: 'workspace',
           name: 'admin-workspace',
           component: () => import('@/views/admin/WorkspaceManager.vue'),

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { noteApi } from '@/api/note'
 import { roadmapApi } from '@/api/roadmap'
 import { useAuthStore } from '@/store/auth'
 import { useLocaleStore } from '@/store/locale'
 import type { Note, NoteListFilters, RoadmapNode } from '@/types'
 
+const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const localeStore = useLocaleStore()
@@ -149,12 +150,39 @@ watch(
 )
 
 watch(
+  () => route.query.search,
+  (value) => {
+    const nextValue = typeof value === 'string' ? value : ''
+    if (nextValue !== searchTerm.value) {
+      searchTerm.value = nextValue
+    }
+  },
+  { immediate: true }
+)
+
+watch(
   [() => authStore.activeWorkspaceId, searchTerm, selectedNodeId],
   () => {
     scheduleFetchNotes()
   },
   { immediate: true }
 )
+
+watch(searchTerm, (value) => {
+  const nextQuery = { ...route.query }
+  const normalizedValue = value.trim()
+
+  if (normalizedValue) {
+    nextQuery.search = normalizedValue
+  } else {
+    delete nextQuery.search
+  }
+
+  const currentValue = typeof route.query.search === 'string' ? route.query.search : ''
+  if (normalizedValue !== currentValue) {
+    router.replace({ query: nextQuery })
+  }
+})
 
 onBeforeUnmount(() => {
   if (filterTimer) {

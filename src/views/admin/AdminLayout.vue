@@ -1,27 +1,32 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 import { useAuthStore } from '@/store/auth'
 import { useLocaleStore } from '@/store/locale'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const localeStore = useLocaleStore()
 const isCollapsed = ref(false)
+const searchInput = ref('')
 
 const copy = computed(() =>
   localeStore.isChinese
     ? {
         badge: 'Workspace Ops Console',
         title: 'AI Workspace',
-        description: '在同一套商业化中台里运行 roadmap、notes、team permissions 和协作运营。',
+        description: '在同一套商业化中台里运行 roadmap、notes、team permissions 与协作运营。',
+        searchLabel: 'Global Search',
+        searchPlaceholder: '搜索 roadmap、notes 与知识上下文',
         activeWorkspace: '当前 Workspace',
         account: '当前账号',
         site: '官网',
         logout: '退出登录',
         items: [
           { to: '/admin/dashboard', label: 'Dashboard 总览' },
+          { to: '/admin/search', label: 'Global Search' },
           { to: '/admin/workspace', label: 'Workspace 与 Team' },
           { to: '/admin/roadmap', label: 'Roadmap 运营' },
           { to: '/admin/notes', label: 'Research Notes' },
@@ -31,12 +36,15 @@ const copy = computed(() =>
         badge: 'Workspace Ops Console',
         title: 'AI Workspace',
         description: 'Run roadmap, notes, team permissions, and execution from one commercial operating layer.',
+        searchLabel: 'Global search',
+        searchPlaceholder: 'Search roadmap, notes, and workspace context',
         activeWorkspace: 'Active workspace',
         account: 'Account',
         site: 'Site',
         logout: 'Logout',
         items: [
           { to: '/admin/dashboard', label: 'Dashboard' },
+          { to: '/admin/search', label: 'Global search' },
           { to: '/admin/workspace', label: 'Workspace and team' },
           { to: '/admin/roadmap', label: 'Roadmap ops' },
           { to: '/admin/notes', label: 'Research notes' },
@@ -44,25 +52,15 @@ const copy = computed(() =>
       }
 )
 
-const roleLabel = computed(() => {
-  const role = authStore.activeRole
-  if (!role) {
-    return '--'
-  }
+const roleLabel = computed(() => authStore.activeRole ?? '--')
 
-  if (!localeStore.isChinese) {
-    return role
-  }
-
-  const mapping: Record<string, string> = {
-    owner: 'owner',
-    admin: 'admin',
-    member: 'member',
-    viewer: 'viewer',
-  }
-
-  return mapping[role] ?? role
-})
+watch(
+  () => route.query.q,
+  (value) => {
+    searchInput.value = typeof value === 'string' ? value : ''
+  },
+  { immediate: true }
+)
 
 const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value
@@ -72,6 +70,14 @@ const workspaceSwitcher = computed({
   get: () => (authStore.activeWorkspaceId ? String(authStore.activeWorkspaceId) : ''),
   set: (value: string) => authStore.setActiveWorkspace(Number(value)),
 })
+
+const submitSearch = () => {
+  const q = searchInput.value.trim()
+  router.push({
+    name: 'admin-search',
+    query: q ? { q } : {},
+  })
+}
 
 const handleLogout = () => {
   authStore.logout()
@@ -110,6 +116,22 @@ const handleLogout = () => {
       </div>
 
       <div v-show="!isCollapsed" class="relative px-6">
+        <div class="rounded-[1.75rem] border border-white/10 bg-white/6 p-4 backdrop-blur">
+          <div class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">{{ copy.searchLabel }}</div>
+          <div class="mt-3 flex gap-2">
+            <input
+              v-model="searchInput"
+              type="text"
+              class="admin-search-input"
+              :placeholder="copy.searchPlaceholder"
+              @keyup.enter="submitSearch"
+            />
+            <button class="search-action" @click="submitSearch">Go</button>
+          </div>
+        </div>
+      </div>
+
+      <div v-show="!isCollapsed" class="relative mt-4 px-6">
         <div class="rounded-[1.75rem] border border-white/10 bg-white/6 p-4 backdrop-blur">
           <div class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">{{ copy.activeWorkspace }}</div>
           <select v-model="workspaceSwitcher" class="workspace-select mt-3 w-full">
@@ -181,6 +203,18 @@ const handleLogout = () => {
 
 .admin-nav-item.active {
   @apply bg-blue-600 text-white shadow-xl shadow-blue-500/20;
+}
+
+.admin-search-input {
+  @apply min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/60 px-4 py-3 text-sm font-semibold text-white outline-none transition-all;
+}
+
+.admin-search-input:focus {
+  @apply border-blue-400;
+}
+
+.search-action {
+  @apply rounded-2xl bg-blue-600 px-4 py-3 text-[10px] font-black uppercase tracking-[0.24em] text-white transition-all hover:bg-white hover:text-slate-950;
 }
 
 .workspace-select {
