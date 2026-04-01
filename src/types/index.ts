@@ -64,6 +64,14 @@ export interface WorkspaceActivity {
   href: string;
 }
 
+export interface WorkspaceActivityResponse {
+  workspace: WorkspaceMembership;
+  items: WorkspaceActivity[];
+  total_items: number;
+  applied_type: WorkspaceActivity['type'] | null;
+  applied_limit: number;
+}
+
 export interface WorkspaceOnboardingChecklistItem {
   key: string;
   title: string;

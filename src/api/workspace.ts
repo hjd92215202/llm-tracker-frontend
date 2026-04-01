@@ -1,5 +1,13 @@
 import request from './request';
-import type { WorkspaceMember, WorkspaceMembership, WorkspaceOverview, WorkspaceRole, WorkspaceSearchResponse } from '@/types';
+import type {
+  WorkspaceActivity,
+  WorkspaceActivityResponse,
+  WorkspaceMember,
+  WorkspaceMembership,
+  WorkspaceOverview,
+  WorkspaceRole,
+  WorkspaceSearchResponse,
+} from '@/types';
 
 export const workspaceApi = {
   listWorkspaces: () => request.get<any, WorkspaceMembership[]>('/workspaces'),
@@ -7,6 +15,10 @@ export const workspaceApi = {
     request.post<any, WorkspaceMembership>('/workspaces', data),
   getOverview: (workspaceId: number) =>
     request.get<any, WorkspaceOverview>(`/workspaces/${workspaceId}/overview`),
+  getActivity: (
+    workspaceId: number,
+    params?: { type?: WorkspaceActivity['type']; limit?: number }
+  ) => request.get<any, WorkspaceActivityResponse>(`/workspaces/${workspaceId}/activity`, { params }),
   searchWorkspace: (workspaceId: number, q: string) =>
     request.get<any, WorkspaceSearchResponse>(`/workspaces/${workspaceId}/search`, { params: { q } }),
   listMembers: (workspaceId: number) =>

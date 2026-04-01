@@ -17,15 +17,16 @@ const copy = computed(() =>
     ? {
         badge: 'Workspace Ops Console',
         title: 'AI Workspace',
-        description: '在同一套商业化中台里运行 roadmap、notes、team permissions 与协作运营。',
+        description: '在一套商业化中台里统一管理 roadmap、research notes、team permissions 与团队协作运营。',
         searchLabel: 'Global Search',
-        searchPlaceholder: '搜索 roadmap、notes 与知识上下文',
+        searchPlaceholder: '搜索 roadmap、notes 与 workspace context',
         activeWorkspace: '当前 Workspace',
         account: '当前账号',
         site: '官网',
         logout: '退出登录',
         items: [
           { to: '/admin/dashboard', label: 'Dashboard 总览' },
+          { to: '/admin/activity', label: 'Activity Center' },
           { to: '/admin/search', label: 'Global Search' },
           { to: '/admin/workspace', label: 'Workspace 与 Team' },
           { to: '/admin/roadmap', label: 'Roadmap 运营' },
@@ -35,7 +36,7 @@ const copy = computed(() =>
     : {
         badge: 'Workspace Ops Console',
         title: 'AI Workspace',
-        description: 'Run roadmap, notes, team permissions, and execution from one commercial operating layer.',
+        description: 'Run roadmap, research notes, team permissions, and execution from one commercial operating layer.',
         searchLabel: 'Global search',
         searchPlaceholder: 'Search roadmap, notes, and workspace context',
         activeWorkspace: 'Active workspace',
@@ -44,6 +45,7 @@ const copy = computed(() =>
         logout: 'Logout',
         items: [
           { to: '/admin/dashboard', label: 'Dashboard' },
+          { to: '/admin/activity', label: 'Activity center' },
           { to: '/admin/search', label: 'Global search' },
           { to: '/admin/workspace', label: 'Workspace and team' },
           { to: '/admin/roadmap', label: 'Roadmap ops' },
