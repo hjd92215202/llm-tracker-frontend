@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { roadmapApi } from '@/api/roadmap'
 import { workspaceApi } from '@/api/workspace'
 import { useAuthStore } from '@/store/auth'
 import { useLocaleStore } from '@/store/locale'
-import type { WorkspaceSearchNoteItem, WorkspaceSearchResponse, WorkspaceSearchRoadmapItem } from '@/types'
+import type { RoadmapNode, WorkspaceSearchNoteItem, WorkspaceSearchResponse, WorkspaceSearchRoadmapItem } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
@@ -15,6 +16,7 @@ const loading = ref(false)
 const errorMessage = ref('')
 const searchTerm = ref('')
 const searchResults = ref<WorkspaceSearchResponse | null>(null)
+const roadmapNodes = ref<RoadmapNode[]>([])
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -22,7 +24,7 @@ const copy = computed(() =>
   localeStore.isChinese
     ? {
         eyebrow: 'Global Search',
-        title: '先搜索，再进入 roadmap 或 notes。',
+        title: '先搜索，再进入 Roadmap 或 Notes。',
         summary: '从整个 workspace 的知识与执行上下文里直接找结果，而不是先猜它属于哪个模块。',
         inputPlaceholder: '搜索关键词、项目名、方法论、节点或研究结论',
         searching: '正在搜索 workspace...',
@@ -99,6 +101,27 @@ const typeLabel = (type: string) => {
   return copy.value.theory
 }
 
+const resolveNodeTitle = (nodeId: number | null) => {
+  if (!nodeId) {
+    return copy.value.unknownNode
+  }
+
+  return roadmapNodes.value.find((node) => node.id === nodeId)?.title ?? `${copy.value.linkedNode} #${nodeId}`
+}
+
+const loadRoadmapNodes = async () => {
+  if (!authStore.activeWorkspaceId) {
+    roadmapNodes.value = []
+    return
+  }
+
+  try {
+    roadmapNodes.value = await roadmapApi.getNodes()
+  } catch {
+    roadmapNodes.value = []
+  }
+}
+
 const performSearch = async () => {
   const q = searchTerm.value.trim()
   if (!authStore.activeWorkspaceId || !q) {
@@ -156,8 +179,10 @@ watch(
 watch(
   () => authStore.activeWorkspaceId,
   () => {
+    loadRoadmapNodes()
     performSearch()
-  }
+  },
+  { immediate: true }
 )
 
 watch(searchTerm, () => {
@@ -211,7 +236,10 @@ const openNoteResult = (item: WorkspaceSearchNoteItem) => {
       </div>
     </section>
 
-    <div v-if="errorMessage" class="mt-8 rounded-[1.75rem] border border-red-100 bg-red-50 px-5 py-4 text-sm font-semibold text-red-600">
+    <div
+      v-if="errorMessage"
+      class="mt-8 rounded-[1.75rem] border border-red-100 bg-red-50 px-5 py-4 text-sm font-semibold text-red-600"
+    >
       {{ errorMessage }}
     </div>
 
@@ -279,7 +307,7 @@ const openNoteResult = (item: WorkspaceSearchNoteItem) => {
               <div class="flex items-start justify-between gap-4">
                 <div>
                   <div class="inline-flex rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
-                    {{ copy.linkedNode }} {{ item.node_id ?? copy.unknownNode }}
+                    {{ copy.linkedNode }} {{ resolveNodeTitle(item.node_id) }}
                   </div>
                   <h3 class="mt-3 text-lg font-black tracking-tight text-slate-950">{{ item.title }}</h3>
                   <p class="mt-2 text-sm leading-7 text-slate-500">{{ item.summary || copy.noSummary }}</p>
