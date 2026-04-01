@@ -85,6 +85,17 @@ export interface WorkspaceOverview {
   onboarding: WorkspaceOnboardingChecklistItem[];
 }
 
+export interface NoteListFilters {
+  search?: string;
+  node_id?: number;
+}
+
+export interface RoadmapListFilters {
+  search?: string;
+  status?: RoadmapNode['status'];
+  node_type?: RoadmapNode['node_type'];
+}
+
 export interface AuthSession {
   user: User;
   workspaces: WorkspaceMembership[];

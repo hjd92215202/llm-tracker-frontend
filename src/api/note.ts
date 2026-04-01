@@ -1,9 +1,9 @@
 import request from './request';
-import type { ApiResponse, Artifact, Note } from '@/types';
+import type { ApiResponse, Artifact, Note, NoteListFilters } from '@/types';
 
 export const noteApi = {
   getNotesByNode: (nodeId: number) => request.get<any, Note[]>(`/roadmap/${nodeId}/notes`),
-  getAllNotes: () => request.get<any, Note[]>('/notes'),
+  getAllNotes: (params?: NoteListFilters) => request.get<any, Note[]>('/notes', { params }),
   getDetail: (id: number) => request.get<any, { note: Note; artifacts: Artifact[] }>(`/notes/${id}`),
   createNote: (data: Partial<Note>) => request.post<any, Note>('/notes', data),
   updateNote: (id: number, data: Partial<Note>) => request.put<any, ApiResponse<any>>(`/notes/${id}`, data),
