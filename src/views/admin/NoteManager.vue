@@ -1,189 +1,218 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { noteApi } from '@/api/note'
 import { roadmapApi } from '@/api/roadmap'
+import { useAuthStore } from '@/store/auth'
 import type { Note, RoadmapNode } from '@/types'
 
 const router = useRouter()
+const authStore = useAuthStore()
+
 const notes = ref<Note[]>([])
 const nodes = ref<RoadmapNode[]>([])
-const loading = ref(true)
-
-// 删除确认模态框状态
+const loading = ref(false)
 const isDeleteConfirmOpen = ref(false)
 const targetNote = ref<Note | null>(null)
 
+const currentWorkspaceName = computed(() => authStore.activeWorkspace?.workspace_name ?? 'Workspace')
+const hasWriteAccess = computed(() => authStore.hasWriteAccess)
+
 const fetchData = async () => {
-    loading.value = true
-    try {
-        // 并发获取路线节点和全量笔记
-        const [nodesData, notesData] = await Promise.all([
-            roadmapApi.getNodes(),
-            noteApi.getAllNotes()
-        ])
-        nodes.value = nodesData
-        notes.value = notesData
-    } catch (err) {
-        console.error('获取数据失败:', err)
-    } finally {
-        loading.value = false
-    }
+  loading.value = true
+
+  try {
+    const [nodesData, notesData] = await Promise.all([roadmapApi.getNodes(), noteApi.getAllNotes()])
+    nodes.value = nodesData
+    notes.value = notesData
+  } finally {
+    loading.value = false
+  }
 }
 
-onMounted(fetchData)
+watch(
+  () => authStore.activeWorkspaceId,
+  () => {
+    fetchData()
+  },
+  { immediate: true }
+)
 
-// 获取关联节点的标题
 const getNodeTitle = (nodeId: number | null) => {
-    if (!nodeId) return '全局 / 未分类'
-    return nodes.value.find(n => n.id === nodeId)?.title || '未知节点'
+  if (!nodeId) {
+    return 'General'
+  }
+
+  return nodes.value.find((node) => node.id === nodeId)?.title || 'Unknown node'
 }
 
 const editNote = (id: number) => router.push(`/admin/note/edit/${id}`)
-const createNote = () => router.push('/admin/note/create')
+const createNote = () => {
+  if (!hasWriteAccess.value) {
+    return
+  }
 
-// 触发删除确认
+  router.push('/admin/note/create')
+}
+
 const triggerDelete = (note: Note) => {
-    targetNote.value = note
-    isDeleteConfirmOpen.value = true
+  if (!hasWriteAccess.value) {
+    return
+  }
+
+  targetNote.value = note
+  isDeleteConfirmOpen.value = true
 }
 
 const confirmDelete = async () => {
-    if (!targetNote.value) return
-    try {
-        await noteApi.deleteNote(targetNote.value.id)
-        isDeleteConfirmOpen.value = false
-        targetNote.value = null
-        await fetchData() // 刷新列表
-    } catch (err) {
-        alert("删除失败，请稍后重试")
-    }
+  if (!targetNote.value || !hasWriteAccess.value) {
+    return
+  }
+
+  try {
+    await noteApi.deleteNote(targetNote.value.id)
+    isDeleteConfirmOpen.value = false
+    targetNote.value = null
+    await fetchData()
+  } catch {
+    alert('Unable to delete note right now')
+  }
 }
 </script>
 
 <template>
-    <div class="p-12 max-w-7xl mx-auto">
-        <!-- 1. 顶部标题栏 -->
-        <header class="flex justify-between items-end mb-16 px-4">
-            <div>
-                <h1 class="text-5xl font-black text-slate-900 tracking-tighter uppercase">研究笔记管理</h1>
-                <p class="text-slate-500 font-bold mt-2 uppercase text-[10px] tracking-widest italic">Inventory of
-                    Research Assets</p>
-            </div>
-            <button @click="createNote"
-                class="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 transition-all shadow-xl active:scale-95">
-                + 撰写新笔记
-            </button>
-        </header>
+  <div class="mx-auto max-w-7xl px-8 py-10 lg:px-12">
+    <header class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <div class="text-[11px] font-black uppercase tracking-[0.34em] text-blue-600">Research notes</div>
+        <h1 class="mt-4 text-5xl font-black tracking-[-0.06em] text-slate-950">Keep team learnings searchable and tied to execution.</h1>
+        <p class="mt-4 max-w-3xl text-base leading-8 text-slate-500">
+          These notes are scoped to <span class="font-black text-slate-800">{{ currentWorkspaceName }}</span>.
+        </p>
+      </div>
 
-        <!-- 2. 笔记数据表格 -->
-        <div class="bg-white rounded-4xl border border-slate-100 overflow-hidden shadow-sm">
-            <table class="w-full text-left border-collapse">
-                <thead
-                    class="bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-100">
-                    <tr>
-                        <th class="px-8 py-6">发布时间</th>
-                        <th class="px-8 py-6">研究标题与摘要</th>
-                        <th class="px-8 py-6">关联学习节点</th>
-                        <th class="px-8 py-6 text-right">管理操作</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-50">
-                    <tr v-for="note in notes" :key="note.id" class="group hover:bg-blue-50/20 transition-colors">
-                        <!-- 日期展示 -->
-                        <td class="px-8 py-6 font-mono text-xs text-slate-500 font-bold">
-                            {{ new Date(note.created_at).toLocaleDateString() }}
-                        </td>
-
-                        <!-- 标题与摘要预览 -->
-                        <td class="px-8 py-6">
-                            <div class="font-black text-slate-900 tracking-tight text-sm mb-1 uppercase">{{ note.title
-                                }}</div>
-                            <div class="text-[10px] text-slate-400 line-clamp-1 italic max-w-xs font-medium">
-                                {{ note.summary || '等待 AI 执行结构化分析...' }}
-                            </div>
-                        </td>
-
-                        <!-- 节点标签 -->
-                        <td class="px-8 py-6">
-                            <span
-                                class="bg-white text-blue-600 text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-tighter border border-blue-100 shadow-sm">
-                                {{ getNodeTitle(note.node_id) }}
-                            </span>
-                        </td>
-
-                        <!-- 操作区 -->
-                        <td class="px-8 py-6 text-right space-x-6 opacity-0 group-hover:opacity-100 transition-all">
-                            <button @click="editNote(note.id)"
-                                class="text-[10px] font-black text-blue-700 hover:text-blue-900 uppercase tracking-widest underline decoration-2 underline-offset-4 transition-colors">编辑</button>
-                            <button @click="triggerDelete(note)"
-                                class="text-[10px] font-black text-red-400 hover:text-red-600 uppercase tracking-widest transition-colors">移除</button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <!-- 空状态处理 -->
-            <div v-if="notes.length === 0 && !loading" class="py-32 text-center">
-                <p class="text-slate-200 font-black text-5xl uppercase tracking-tighter italic opacity-50">暂无记录</p>
-                <p class="text-slate-400 text-xs font-bold mt-4 tracking-widest uppercase">开始记录你的研究成果，填补知识版图。</p>
-            </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="rounded-full bg-slate-100 px-4 py-2 text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">
+          {{ hasWriteAccess ? 'Edit enabled' : 'Read only role' }}
         </div>
+        <button
+          @click="createNote"
+          :disabled="!hasWriteAccess"
+          class="rounded-2xl bg-blue-600 px-6 py-3 text-[11px] font-black uppercase tracking-[0.26em] text-white shadow-[0_18px_50px_rgba(37,99,235,0.22)] transition-all hover:bg-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          New note
+        </button>
+      </div>
+    </header>
 
-        <!-- 3. 自定义删除确认模态框 -->
-        <Teleport to="body">
-            <Transition name="modal">
-                <div v-if="isDeleteConfirmOpen" class="fixed inset-0 z-110 flex items-center justify-center p-6">
-                    <div class="absolute inset-0 bg-slate-950/40 backdrop-blur-md" @click="isDeleteConfirmOpen = false">
-                    </div>
-                    <div
-                        class="relative w-full max-w-sm bg-white rounded-4xl p-10 shadow-2xl text-center animate-in zoom-in-95 duration-300">
-                        <div
-                            class="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                        </div>
-                        <h3 class="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tighter">确认删除</h3>
-                        <p class="text-slate-500 text-sm leading-relaxed mb-10 px-4 font-medium">
-                            确定要永久移除笔记 <span class="font-bold text-slate-900">《{{ targetNote?.title }}》</span> 吗？此操作无法撤销。
-                        </p>
-                        <div class="flex flex-col gap-3">
-                            <button @click="confirmDelete"
-                                class="w-full bg-red-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 shadow-xl shadow-red-500/20 transition-all">确认永久移除</button>
-                            <button @click="isDeleteConfirmOpen = false"
-                                class="w-full bg-slate-100 text-slate-400 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all">取消</button>
-                        </div>
-                    </div>
-                </div>
-            </Transition>
-        </Teleport>
+    <div v-if="!hasWriteAccess" class="mt-8 rounded-[1.8rem] border border-amber-100 bg-amber-50 px-5 py-4 text-sm font-semibold text-amber-700">
+      Your current role can review notes, but only owners, admins, and members can create or modify them.
     </div>
+
+    <div class="mt-10 overflow-hidden rounded-[2rem] border border-slate-100 bg-white shadow-[0_18px_70px_rgba(15,23,42,0.04)]">
+      <table class="w-full border-collapse">
+        <thead class="bg-slate-50 text-left text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">
+          <tr>
+            <th class="px-6 py-4">Published</th>
+            <th class="px-6 py-4">Title and summary</th>
+            <th class="px-6 py-4">Linked node</th>
+            <th class="px-6 py-4 text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody v-if="!loading" class="divide-y divide-slate-100">
+          <tr v-for="note in notes" :key="note.id" class="hover:bg-slate-50/80">
+            <td class="px-6 py-5 text-sm font-semibold text-slate-500">
+              {{ new Date(note.created_at).toLocaleDateString() }}
+            </td>
+            <td class="px-6 py-5">
+              <div class="font-black text-slate-900">{{ note.title }}</div>
+              <div class="mt-1 text-sm text-slate-500">{{ note.summary || 'No summary available yet' }}</div>
+            </td>
+            <td class="px-6 py-5">
+              <span class="rounded-full bg-blue-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-blue-600">
+                {{ getNodeTitle(note.node_id) }}
+              </span>
+            </td>
+            <td class="px-6 py-5 text-right">
+              <div class="inline-flex items-center gap-4">
+                <button
+                  @click="editNote(note.id)"
+                  :disabled="!hasWriteAccess"
+                  class="text-[11px] font-black uppercase tracking-[0.2em] text-blue-600 transition-all hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Edit
+                </button>
+                <button
+                  @click="triggerDelete(note)"
+                  :disabled="!hasWriteAccess"
+                  class="text-[11px] font-black uppercase tracking-[0.2em] text-red-500 transition-all hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Delete
+                </button>
+              </div>
+            </td>
+          </tr>
+          <tr v-if="notes.length === 0">
+            <td colspan="4" class="px-6 py-16 text-center text-sm font-semibold text-slate-400">
+              No notes have been captured in this workspace yet.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div v-if="loading" class="px-6 py-16 text-center text-sm font-semibold text-slate-400">
+        Loading workspace notes...
+      </div>
+    </div>
+
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="isDeleteConfirmOpen" class="fixed inset-0 z-110 flex items-center justify-center p-6">
+          <div class="absolute inset-0 bg-slate-950/40 backdrop-blur-md" @click="isDeleteConfirmOpen = false"></div>
+          <div class="modal-panel relative w-full max-w-sm rounded-[2rem] bg-white p-8 text-center shadow-2xl">
+            <h3 class="text-2xl font-black tracking-[-0.05em] text-slate-950">Delete this note?</h3>
+            <p class="mt-3 text-sm leading-7 text-slate-500">
+              This removes <span class="font-black text-slate-800">{{ targetNote?.title }}</span> from the workspace knowledge base.
+            </p>
+            <div class="mt-8 flex flex-col gap-3">
+              <button @click="confirmDelete" class="danger-button w-full">Delete permanently</button>
+              <button @click="isDeleteConfirmOpen = false" class="secondary-button w-full">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+  </div>
 </template>
 
 <style lang="postcss" scoped>
 @reference "@/style.css";
 
-/* 模态框平滑缩放动画 */
+.danger-button {
+  @apply rounded-2xl bg-red-600 px-5 py-3 text-[11px] font-black uppercase tracking-[0.26em] text-white transition-all hover:bg-red-700;
+}
+
+.secondary-button {
+  @apply rounded-2xl border border-slate-200 bg-white px-5 py-3 text-[11px] font-black uppercase tracking-[0.26em] text-slate-500 transition-all hover:bg-slate-50;
+}
+
 .modal-enter-active,
 .modal-leave-active {
-    transition: opacity 0.3s ease;
+  transition: opacity 0.2s ease;
+}
+
+.modal-enter-active .modal-panel,
+.modal-leave-active .modal-panel {
+  transition: transform 0.2s ease;
 }
 
 .modal-enter-from,
 .modal-leave-to {
-    opacity: 0;
+  opacity: 0;
 }
 
-.modal-enter-active .relative,
-.modal-leave-active .relative {
-    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.modal-enter-from .relative,
-.modal-leave-to .relative {
-    transform: scale(0.8) translateY(20px);
+.modal-enter-from .modal-panel,
+.modal-leave-to .modal-panel {
+  transform: scale(0.96);
 }
 </style>

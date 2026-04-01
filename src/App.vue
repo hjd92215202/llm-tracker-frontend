@@ -6,18 +6,17 @@ import { authApi } from '@/api/auth'
 const authStore = useAuthStore()
 
 onMounted(async () => {
-  // 💡 只有当 Pinia 里没用户数据但有 Token 时才去后端同步，减少冗余请求
-  if (authStore.token && !authStore.user) {
+  if (authStore.token && (!authStore.user || authStore.workspaces.length === 0 || !authStore.activeWorkspaceId)) {
     try {
-      const userData = await authApi.getMe()
-      authStore.user = userData
-    } catch (err) {
-      // 只有接口报错（如 Token 伪造）才清理
+      const session = await authApi.getMe()
+      authStore.setSession(session)
+    } catch {
       authStore.logout()
     }
   }
 })
 </script>
+
 <template>
   <router-view />
 </template>
@@ -30,14 +29,10 @@ body {
   width: 100%;
   min-height: 100%;
   background-color: #ffffff;
-
-  /* 💡 核心：针对 Firefox */
   scrollbar-width: none;
-  /* 💡 核心：针对 IE/Edge */
   -ms-overflow-style: none;
 }
 
-/* 💡 核心：针对 Chrome, Safari, Edge (Webkit) */
 html::-webkit-scrollbar,
 body::-webkit-scrollbar {
   display: none;
@@ -47,7 +42,6 @@ body::-webkit-scrollbar {
   width: 100%;
 }
 
-/* 保持滚动功能，但移除视觉干扰 */
 body {
   overflow-y: auto;
 }

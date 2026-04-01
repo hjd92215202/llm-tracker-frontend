@@ -1,44 +1,48 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import { authApi } from '@/api/auth'
+import { useAuthStore } from '@/store/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
-// 表单数据
 const form = ref({
   username: '',
   email: '',
   password: '',
-  confirmPassword: ''
+  confirmPassword: '',
 })
 
 const loading = ref(false)
+const errorMessage = ref('')
 
-// 注册逻辑
 const handleRegister = async () => {
-  // 1. 基础校验
+  errorMessage.value = ''
+
   if (form.value.password !== form.value.confirmPassword) {
-    alert("Two passwords do not match")
+    errorMessage.value = 'Passwords do not match'
     return
   }
 
   loading.value = true
+
   try {
-    const res = await axios.post('/api/auth/register', {
+    await authApi.register({
       username: form.value.username,
       email: form.value.email,
-      password: form.value.password
+      password: form.value.password,
     })
 
-    if (res.data.success) {
-      alert("Registration successful! Please login.")
-      router.push('/login')
-    }
-  } catch (err: any) {
-    // 使用我们后端返回的优雅错误信息
-    const errorMsg = err.response?.data?.error || "Registration failed"
-    alert(errorMsg)
+    const session = await authApi.login({
+      username: form.value.username,
+      password: form.value.password,
+    })
+
+    authStore.login(session)
+    router.push('/admin/workspace')
+  } catch (error: any) {
+    errorMessage.value = error.message || 'Unable to create account'
   } finally {
     loading.value = false
   }
@@ -46,56 +50,86 @@ const handleRegister = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-slate-50 px-6">
-    <div class="max-w-lg w-full bg-white rounded-[3.5rem] p-16 shadow-[0_30px_100px_rgba(0,0,0,0.04)] border border-slate-100 animate-in zoom-in-95 duration-700">
-      <header class="text-center mb-12">
-        <div class="inline-block px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-widest mb-4 border border-blue-100">
-          Neural Network Access
-        </div>
-        <h1 class="text-4xl font-black text-slate-900 tracking-tighter uppercase">Initialize Account</h1>
-        <p class="text-[10px] font-bold text-slate-400 mt-2 tracking-[0.2em] uppercase">Join the LLM research trajectory</p>
-      </header>
+  <div class="min-h-screen bg-[radial-gradient(circle_at_top_right,_rgba(37,99,235,0.16),_transparent_28%),linear-gradient(180deg,_#f8fbff_0%,_#eef5ff_100%)] px-6 py-10">
+    <div class="mx-auto grid min-h-[calc(100vh-5rem)] max-w-6xl items-center gap-10 lg:grid-cols-[0.9fr_1.1fr]">
+      <div class="w-full max-w-xl rounded-[2.5rem] border border-white/80 bg-white/92 p-10 shadow-[0_30px_100px_rgba(37,99,235,0.12)] backdrop-blur lg:p-14">
+        <header class="mb-10">
+          <div class="text-[11px] font-black uppercase tracking-[0.32em] text-blue-600">Start your workspace</div>
+          <h1 class="mt-4 text-4xl font-black tracking-[-0.05em] text-slate-950">Create an account and launch your first team space</h1>
+          <p class="mt-3 text-sm leading-6 text-slate-500">
+            Set up one shared place for roadmap planning, research notes, and execution assets.
+          </p>
+        </header>
 
-      <div class="space-y-6">
-        <!-- Username -->
-        <div class="space-y-2">
-          <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Unique Username</label>
-          <input v-model="form.username" type="text" class="admin-input" placeholder="e.g. neuro_pioneer" />
-        </div>
-
-        <!-- Email -->
-        <div class="space-y-2">
-          <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
-          <input v-model="form.email" type="email" class="admin-input" placeholder="name@research.com" />
-        </div>
-
-        <!-- Passwords -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="space-y-5">
           <div class="space-y-2">
-            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Password</label>
-            <input v-model="form.password" type="password" class="admin-input" placeholder="••••••••" />
+            <label class="ml-1 text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Username</label>
+            <input v-model="form.username" type="text" class="admin-input" placeholder="team-operator" />
           </div>
-          <div class="space-y-2">
-            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Confirm</label>
-            <input v-model="form.confirmPassword" type="password" class="admin-input" placeholder="••••••••" />
-          </div>
-        </div>
 
-        <button 
-          @click="handleRegister" 
-          :disabled="loading"
-          class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.3em] hover:bg-slate-900 transition-all mt-8 shadow-xl shadow-blue-500/20 active:scale-95 disabled:opacity-50"
-        >
-          {{ loading ? 'Synchronizing...' : 'Create Researcher Profile' }}
-        </button>
-        
-        <div class="text-center mt-10">
-          <p class="text-[11px] font-bold text-slate-300 uppercase tracking-widest">
-            Already registered? 
-            <span class="text-blue-600 cursor-pointer hover:underline ml-2" @click="router.push('/login')">SignIn</span>
+          <div class="space-y-2">
+            <label class="ml-1 text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Email</label>
+            <input v-model="form.email" type="email" class="admin-input" placeholder="team@company.com" />
+          </div>
+
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="space-y-2">
+              <label class="ml-1 text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Password</label>
+              <input v-model="form.password" type="password" class="admin-input" placeholder="At least 6 characters" />
+            </div>
+            <div class="space-y-2">
+              <label class="ml-1 text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Confirm</label>
+              <input v-model="form.confirmPassword" type="password" class="admin-input" placeholder="Repeat password" />
+            </div>
+          </div>
+
+          <div v-if="errorMessage" class="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
+            {{ errorMessage }}
+          </div>
+
+          <button
+            @click="handleRegister"
+            :disabled="loading"
+            class="mt-4 w-full rounded-2xl bg-blue-600 py-4 text-xs font-black uppercase tracking-[0.32em] text-white shadow-[0_20px_50px_rgba(37,99,235,0.25)] transition-all hover:bg-slate-950 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {{ loading ? 'Provisioning workspace...' : 'Create account' }}
+          </button>
+
+          <p class="text-center text-sm font-semibold text-slate-400">
+            Already have access?
+            <span class="cursor-pointer text-blue-600 hover:underline" @click="router.push('/login')">Sign in</span>
           </p>
         </div>
       </div>
+
+      <section class="hidden lg:block px-6">
+        <div class="rounded-[2.75rem] border border-white/70 bg-slate-950 p-10 text-white shadow-[0_35px_120px_rgba(15,23,42,0.18)]">
+          <div class="text-[11px] font-black uppercase tracking-[0.3em] text-blue-300">What you unlock</div>
+          <h2 class="mt-6 text-5xl font-black leading-none tracking-[-0.06em]">
+            A commercial-grade foundation for AI teams.
+          </h2>
+          <div class="mt-10 space-y-5">
+            <div class="benefit-card">
+              <div class="benefit-label">Workspace structure</div>
+              <p class="benefit-copy">
+                Every user starts with a dedicated workspace that can grow into a team operating hub.
+              </p>
+            </div>
+            <div class="benefit-card">
+              <div class="benefit-label">Role-based collaboration</div>
+              <p class="benefit-copy">
+                Invite admins, members, and viewers with clear access boundaries from day one.
+              </p>
+            </div>
+            <div class="benefit-card">
+              <div class="benefit-label">Execution memory</div>
+              <p class="benefit-copy">
+                Keep roadmaps, notes, and research artifacts connected so the team compounds knowledge instead of losing it.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 </template>
@@ -103,28 +137,35 @@ const handleRegister = async () => {
 <style lang="postcss" scoped>
 @reference "@/style.css";
 
-/* 💡 维持统一的高级感边框样式 */
+.benefit-card {
+  @apply rounded-[1.8rem] border border-white/10 bg-white/5 p-6;
+}
+
+.benefit-label {
+  @apply text-[11px] font-black uppercase tracking-[0.24em] text-blue-200;
+}
+
+.benefit-copy {
+  @apply mt-3 text-sm leading-7 text-slate-300;
+}
+
 .admin-input {
   display: block;
   width: 100%;
-  background-color: #f8fafc;
-  border: 2px solid #e2e8f0 !important; 
+  background-color: #f8fbff;
+  border: 2px solid #dbeafe !important;
   border-radius: 1rem;
-  padding: 1.25rem 1.5rem;
-  font-size: 0.875rem;
+  padding: 1rem 1.15rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  color: #1e293b;
+  color: #0f172a;
   outline: none;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.admin-input:hover {
-  border-color: #cbd5e1 !important;
+  transition: all 0.2s ease;
 }
 
 .admin-input:focus {
-  background-color: #ffffff;
+  background-color: white;
   border-color: #2563eb !important;
-  box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.08);
+  box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.1);
 }
 </style>
