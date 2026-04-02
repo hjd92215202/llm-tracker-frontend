@@ -28,15 +28,15 @@ let filterTimer: ReturnType<typeof setTimeout> | null = null
 const copy = computed(() =>
   localeStore.isChinese
     ? {
-        eyebrow: 'Roadmap',
-        title: '把执行路径整理成清晰、可协作的节点列表',
-        summaryPrefix: '当前 roadmap 属于',
-        summarySuffix: 'workspace，团队可以在这里搜索、筛选、调整顺序，并持续推进执行。',
+        eyebrow: '路线图',
+        title: '把执行路径整理成清楚、可推进的节点列表',
+        summaryPrefix: '当前路线图属于',
+        summarySuffix: '空间，团队可以在这里搜索、筛选、排序，并持续推进执行。',
         writable: '可编辑',
         readonly: '只读',
         addNode: '新建节点',
-        readonlyHint: '你当前可以查看 roadmap，但只有 Owner、Admin 和 Member 可以修改。',
-        filteredHint: '当前处于筛选视图。为避免误操作，拖拽排序已暂时关闭。',
+        readonlyHint: '你当前可以查看路线图，但只有所有者、管理员和成员可以修改。',
+        filteredHint: '当前启用了筛选。为避免误操作，拖拽排序已暂时关闭。',
         filtersTitle: '搜索与筛选',
         searchPlaceholder: '搜索节点标题或描述',
         allStatus: '全部状态',
@@ -44,7 +44,7 @@ const copy = computed(() =>
         results: '结果数',
         order: '顺序',
         node: '节点',
-        dependency: '依赖',
+        dependency: '前置节点',
         status: '状态',
         action: '操作',
         edit: '编辑',
@@ -54,40 +54,40 @@ const copy = computed(() =>
         statusLabel: '状态',
         save: '保存节点',
         delete: '删除节点',
-        deleteTitle: '删除这个节点？',
-        deleteBodyPrefix: '这会删除',
-        deleteBodySuffix: '并重新整理 roadmap 链路。',
+        deleteTitle: '确认删除这个节点吗？',
+        deleteBodyPrefix: '删除后，',
+        deleteBodySuffix: '会从当前路线图中移除，并重新衔接节点顺序。',
         deleteAction: '永久删除',
         cancel: '取消',
         noDescription: '暂无描述',
         noResults: '当前筛选条件下没有匹配的节点。',
-        loading: '正在加载 roadmap...',
-        updateError: '更新 roadmap 顺序失败',
+        loading: '正在加载路线图...',
+        updateError: '更新路线图顺序失败',
         deleteError: '删除节点失败',
         saveError: '保存节点失败',
-        loadError: '加载 roadmap 失败',
+        loadError: '加载路线图失败',
         editTitle: '编辑节点',
         createTitle: '创建节点',
         dependencyRoot: '起始节点',
         dependencyMissing: '缺失节点',
-        workspaceFallback: 'Workspace',
-        theory: 'Theory',
-        coding: 'Coding',
-        project: 'Project',
-        todo: 'Todo',
-        inProgress: 'In progress',
-        completed: 'Completed',
+        workspaceFallback: '当前空间',
+        theory: '理论',
+        coding: '编码',
+        project: '项目',
+        todo: '待开始',
+        inProgress: '进行中',
+        completed: '已完成',
       }
     : {
         eyebrow: 'Roadmap',
-        title: 'Turn execution into a clear, collaborative node list',
+        title: 'Turn execution into a clear list of working nodes',
         summaryPrefix: 'This roadmap belongs to',
-        summarySuffix: 'workspace, where the team can search, filter, reorder, and keep work moving.',
+        summarySuffix: 'workspace, where the team can search, filter, reorder, and keep execution moving.',
         writable: 'Editable',
         readonly: 'Read only',
         addNode: 'New node',
         readonlyHint: 'You can review the roadmap, but only owners, admins, and members can change it.',
-        filteredHint: 'Filters are active. Drag reordering is temporarily disabled to avoid changing a partial view.',
+        filteredHint: 'Filters are active. Drag sorting is temporarily disabled to avoid mistakes.',
         filtersTitle: 'Search and filters',
         searchPlaceholder: 'Search node titles or descriptions',
         allStatus: 'All statuses',
@@ -106,16 +106,16 @@ const copy = computed(() =>
         save: 'Save node',
         delete: 'Delete node',
         deleteTitle: 'Delete this node?',
-        deleteBodyPrefix: 'This removes',
-        deleteBodySuffix: 'and reconnects the roadmap chain.',
+        deleteBodyPrefix: '',
+        deleteBodySuffix: 'will be removed from the roadmap and the chain will reconnect.',
         deleteAction: 'Delete permanently',
         cancel: 'Cancel',
         noDescription: 'No description yet',
-        noResults: 'No roadmap nodes match the current filters.',
+        noResults: 'No nodes match the current filters.',
         loading: 'Loading roadmap...',
-        updateError: 'Unable to update roadmap order right now',
-        deleteError: 'Unable to delete this node',
-        saveError: 'Unable to save this node',
+        updateError: 'Unable to update roadmap order',
+        deleteError: 'Unable to delete node',
+        saveError: 'Unable to save node',
         loadError: 'Unable to load roadmap',
         editTitle: 'Edit node',
         createTitle: 'Create node',
@@ -151,15 +151,9 @@ const statusOptions = computed(() => [
 
 const buildFilters = (): RoadmapListFilters => {
   const filters: RoadmapListFilters = {}
-  if (searchTerm.value.trim()) {
-    filters.search = searchTerm.value.trim()
-  }
-  if (selectedStatus.value !== 'all') {
-    filters.status = selectedStatus.value
-  }
-  if (selectedType.value !== 'all') {
-    filters.node_type = selectedType.value
-  }
+  if (searchTerm.value.trim()) filters.search = searchTerm.value.trim()
+  if (selectedStatus.value !== 'all') filters.status = selectedStatus.value
+  if (selectedType.value !== 'all') filters.node_type = selectedType.value
   return filters
 }
 
@@ -187,10 +181,7 @@ const fetchNodes = async () => {
 }
 
 const scheduleFetchNodes = () => {
-  if (filterTimer) {
-    clearTimeout(filterTimer)
-  }
-
+  if (filterTimer) clearTimeout(filterTimer)
   filterTimer = setTimeout(() => {
     fetchNodes()
   }, 220)
@@ -227,11 +218,8 @@ watch(searchTerm, (value) => {
   const nextQuery = { ...route.query }
   const normalizedValue = value.trim()
 
-  if (normalizedValue) {
-    nextQuery.search = normalizedValue
-  } else {
-    delete nextQuery.search
-  }
+  if (normalizedValue) nextQuery.search = normalizedValue
+  else delete nextQuery.search
 
   const currentValue = typeof route.query.search === 'string' ? route.query.search : ''
   if (normalizedValue !== currentValue) {
@@ -240,9 +228,7 @@ watch(searchTerm, (value) => {
 })
 
 onBeforeUnmount(() => {
-  if (filterTimer) {
-    clearTimeout(filterTimer)
-  }
+  if (filterTimer) clearTimeout(filterTimer)
 })
 
 const syncEntireChain = async (targetNodes: RoadmapNode[]) => {
@@ -262,9 +248,7 @@ const syncEntireChain = async (targetNodes: RoadmapNode[]) => {
 }
 
 const handleDragEnd = async () => {
-  if (!hasWriteAccess.value || isFilterActive.value) {
-    return
-  }
+  if (!hasWriteAccess.value || isFilterActive.value) return
 
   try {
     await syncEntireChain(nodes.value)
@@ -278,9 +262,7 @@ const handleDragEnd = async () => {
 }
 
 const openEdit = (node: RoadmapNode | null = null) => {
-  if (!hasWriteAccess.value) {
-    return
-  }
+  if (!hasWriteAccess.value) return
 
   currentEditNode.value = node
     ? { ...node }
@@ -296,18 +278,13 @@ const closeEdit = () => {
 }
 
 const triggerDelete = () => {
-  if (!hasWriteAccess.value) {
-    return
-  }
-
+  if (!hasWriteAccess.value) return
   isDeleteConfirmOpen.value = true
 }
 
 const confirmDelete = async () => {
   const idToDelete = currentEditNode.value.id
-  if (!idToDelete || !hasWriteAccess.value) {
-    return
-  }
+  if (!idToDelete || !hasWriteAccess.value) return
 
   try {
     const remainingNodes = allNodes.value.filter((node) => node.id !== idToDelete)
@@ -323,9 +300,7 @@ const confirmDelete = async () => {
 }
 
 const handleSave = async () => {
-  if (!hasWriteAccess.value) {
-    return
-  }
+  if (!hasWriteAccess.value) return
 
   const node = currentEditNode.value
 
@@ -350,10 +325,7 @@ const handleSave = async () => {
 }
 
 const getDependencyTitle = (parentId: number | null) => {
-  if (!parentId) {
-    return copy.value.dependencyRoot
-  }
-
+  if (!parentId) return copy.value.dependencyRoot
   return allNodes.value.find((item) => item.id === parentId)?.title ?? copy.value.dependencyMissing
 }
 
@@ -371,10 +343,10 @@ const typeLabel = (type: RoadmapNode['node_type']) => {
 </script>
 
 <template>
-  <div class="mx-auto max-w-6xl px-6 py-8 lg:px-10">
+  <div class="mx-auto max-w-7xl px-6 py-8 lg:px-10">
     <header class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
       <div class="max-w-3xl">
-        <div class="product-eyebrow border border-[rgba(216,110,59,0.14)] bg-white/80 text-[var(--brand)]">
+        <div class="product-eyebrow border border-[rgba(229,106,43,0.14)] bg-white/80 text-[var(--brand)]">
           <span class="h-2.5 w-2.5 rounded-full bg-[var(--brand)]"></span>
           {{ copy.eyebrow }}
         </div>
@@ -407,8 +379,11 @@ const typeLabel = (type: RoadmapNode['node_type']) => {
     </div>
 
     <section class="toolbar mt-8">
-      <div class="toolbar-title">{{ copy.filtersTitle }}</div>
-      <div class="scope-pill">{{ copy.results }} {{ nodes.length }}</div>
+      <div class="toolbar-head">
+        <div class="toolbar-title">{{ copy.filtersTitle }}</div>
+        <div class="scope-pill">{{ copy.results }} {{ nodes.length }}</div>
+      </div>
+
       <div class="toolbar-grid">
         <input v-model="searchTerm" type="text" class="product-input" :placeholder="copy.searchPlaceholder" />
 
@@ -580,8 +555,12 @@ const typeLabel = (type: RoadmapNode['node_type']) => {
   @apply rounded-[2rem] border border-[rgba(20,33,43,0.08)] bg-[rgba(255,251,245,0.8)] p-5 shadow-[0_14px_36px_rgba(20,33,43,0.04)];
 }
 
+.toolbar-head {
+  @apply flex items-center justify-between gap-4;
+}
+
 .toolbar-title {
-  @apply text-[11px] font-black uppercase tracking-[0.28em] text-[var(--brand)];
+  @apply text-sm font-bold text-[var(--brand)];
 }
 
 .toolbar-grid {
@@ -589,7 +568,7 @@ const typeLabel = (type: RoadmapNode['node_type']) => {
 }
 
 .scope-pill {
-  @apply mt-4 inline-flex rounded-full bg-[rgba(20,33,43,0.06)] px-4 py-2 text-[11px] font-black uppercase tracking-[0.22em] text-[var(--ink-main)];
+  @apply inline-flex rounded-full bg-[rgba(20,33,43,0.06)] px-4 py-2 text-sm font-semibold text-[var(--ink-main)];
 }
 
 .table-shell {
@@ -597,7 +576,7 @@ const typeLabel = (type: RoadmapNode['node_type']) => {
 }
 
 .table-head {
-  @apply bg-[rgba(20,33,43,0.04)] text-left text-[11px] font-black uppercase tracking-[0.22em] text-[var(--ink-soft)];
+  @apply bg-[rgba(20,33,43,0.04)] text-left text-sm font-semibold text-[var(--ink-soft)];
 }
 
 .row {
@@ -605,23 +584,23 @@ const typeLabel = (type: RoadmapNode['node_type']) => {
 }
 
 .drag-ghost {
-  @apply border-2 border-dashed border-[rgba(216,110,59,0.24)] bg-[rgba(216,110,59,0.08)] opacity-40;
+  @apply border-2 border-dashed border-[rgba(229,106,43,0.24)] bg-[rgba(229,106,43,0.08)] opacity-40;
 }
 
 .order-pill {
-  @apply inline-flex rounded-full border border-[rgba(20,33,43,0.12)] px-3 py-2 text-[11px] font-black uppercase tracking-[0.22em] text-[var(--ink-soft)];
+  @apply inline-flex rounded-full border border-[rgba(20,33,43,0.12)] px-3 py-2 text-sm font-semibold text-[var(--ink-soft)];
 }
 
 .pill {
-  @apply inline-flex rounded-full bg-[rgba(20,33,43,0.06)] px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-[var(--ink-main)];
+  @apply inline-flex rounded-full bg-[rgba(20,33,43,0.06)] px-3 py-1 text-sm font-semibold text-[var(--ink-main)];
 }
 
 .pill-brand {
-  @apply bg-[rgba(216,110,59,0.12)] text-[var(--brand)];
+  @apply bg-[rgba(229,106,43,0.12)] text-[var(--brand)];
 }
 
 .status-pill {
-  @apply inline-flex rounded-full bg-[rgba(20,33,43,0.06)] px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-[var(--ink-main)];
+  @apply inline-flex rounded-full bg-[rgba(20,33,43,0.06)] px-3 py-1 text-sm font-semibold text-[var(--ink-main)];
 }
 
 .status-pill-success {
@@ -629,15 +608,15 @@ const typeLabel = (type: RoadmapNode['node_type']) => {
 }
 
 .status-pill-brand {
-  @apply bg-[rgba(216,110,59,0.12)] text-[var(--brand)];
+  @apply bg-[rgba(229,106,43,0.12)] text-[var(--brand)];
 }
 
 .action-link {
-  @apply text-[11px] font-black uppercase tracking-[0.22em] text-[var(--brand)] transition-all hover:opacity-70;
+  @apply text-sm font-semibold text-[var(--brand)] transition-all hover:opacity-70;
 }
 
 .field-label {
-  @apply text-[11px] font-black uppercase tracking-[0.22em] text-[var(--ink-soft)];
+  @apply text-sm font-semibold text-[var(--ink-soft)];
 }
 
 .banner {
@@ -645,12 +624,12 @@ const typeLabel = (type: RoadmapNode['node_type']) => {
 }
 
 .banner-warning {
-  background: rgba(216, 110, 59, 0.08);
+  background: rgba(229, 106, 43, 0.08);
   color: var(--brand-deep);
 }
 
 .banner-info {
-  background: rgba(45, 122, 120, 0.08);
+  background: rgba(37, 99, 235, 0.08);
   color: var(--accent);
 }
 
@@ -659,7 +638,7 @@ const typeLabel = (type: RoadmapNode['node_type']) => {
 }
 
 .danger-button {
-  @apply rounded-[1.2rem] px-5 py-3 text-[11px] font-black uppercase tracking-[0.24em] text-white transition-all;
+  @apply rounded-[1.2rem] px-5 py-3 text-sm font-semibold text-white transition-all;
   background: var(--danger);
 }
 

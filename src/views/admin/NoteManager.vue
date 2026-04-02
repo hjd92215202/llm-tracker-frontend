@@ -26,14 +26,14 @@ let filterTimer: ReturnType<typeof setTimeout> | null = null
 const copy = computed(() =>
   localeStore.isChinese
     ? {
-        eyebrow: 'Notes',
-        title: '把知识沉淀成可搜索、可追踪的团队记录',
-        summaryPrefix: '这些 notes 属于',
-        summarySuffix: 'workspace，用来保存研究结论、过程记录和关键决策。',
+        eyebrow: '笔记',
+        title: '把研究与过程记录整理成清楚的知识资产',
+        summaryPrefix: '这些笔记属于',
+        summarySuffix: '空间，用来保存研究结论、过程记录和关键决策。',
         writable: '可编辑',
         readonly: '只读',
-        newNote: '新建 Note',
-        readonlyHint: '你当前可以查看和搜索 notes，但只有 Owner、Admin 和 Member 可以创建或修改。',
+        newNote: '新建笔记',
+        readonlyHint: '你当前可以查看和搜索笔记，但只有所有者、管理员和成员可以创建或修改。',
         filtersTitle: '搜索与筛选',
         searchPlaceholder: '搜索标题、摘要或正文内容',
         allNodes: '全部节点',
@@ -42,34 +42,34 @@ const copy = computed(() =>
         published: '创建时间',
         titleAndSummary: '标题与摘要',
         action: '操作',
-        open: '打开',
+        open: '查看',
         edit: '编辑',
         delete: '删除',
         noSummary: '暂无摘要',
-        noResults: '当前筛选条件下没有匹配的 notes。',
-        loading: '正在加载 notes...',
-        deleteTitle: '删除这条 Note？',
-        deleteBodyPrefix: '这会把',
-        deleteBodySuffix: '从当前 workspace 中移除。',
+        noResults: '当前筛选条件下没有匹配的笔记。',
+        loading: '正在加载笔记...',
+        deleteTitle: '确认删除这条笔记吗？',
+        deleteBodyPrefix: '删除后，',
+        deleteBodySuffix: '会从当前空间中移除。',
         deleteAction: '永久删除',
         cancel: '取消',
-        deleteError: '删除 Note 失败',
-        loadError: '加载 notes 失败',
-        workspaceFallback: 'Workspace',
+        deleteError: '删除笔记失败',
+        loadError: '加载笔记失败',
+        workspaceFallback: '当前空间',
         generalNode: '通用',
         unknownNode: '未知节点',
       }
     : {
         eyebrow: 'Notes',
-        title: 'Turn knowledge into searchable, trackable team records',
+        title: 'Turn research and working records into clearer knowledge assets',
         summaryPrefix: 'These notes belong to',
         summarySuffix: 'workspace and capture research outcomes, process, and key decisions.',
         writable: 'Editable',
         readonly: 'Read only',
         newNote: 'New note',
-        readonlyHint: 'You can review and search notes, but only owners, admins, and members can create or change them.',
+        readonlyHint: 'You can review and search notes, but only owners, admins, and members can create or update them.',
         filtersTitle: 'Search and filters',
-        searchPlaceholder: 'Search titles, summaries, or note content',
+        searchPlaceholder: 'Search titles, summaries, or content',
         allNodes: 'All nodes',
         linkedNode: 'Linked node',
         resultCount: 'Results',
@@ -83,11 +83,11 @@ const copy = computed(() =>
         noResults: 'No notes match the current filters.',
         loading: 'Loading notes...',
         deleteTitle: 'Delete this note?',
-        deleteBodyPrefix: 'This removes',
-        deleteBodySuffix: 'from the current workspace.',
+        deleteBodyPrefix: '',
+        deleteBodySuffix: 'will be removed from the current workspace.',
         deleteAction: 'Delete permanently',
         cancel: 'Cancel',
-        deleteError: 'Unable to delete this note right now',
+        deleteError: 'Unable to delete this note',
         loadError: 'Unable to load notes',
         workspaceFallback: 'Workspace',
         generalNode: 'General',
@@ -100,12 +100,8 @@ const hasWriteAccess = computed(() => authStore.hasWriteAccess)
 
 const buildFilters = (): NoteListFilters => {
   const filters: NoteListFilters = {}
-  if (searchTerm.value.trim()) {
-    filters.search = searchTerm.value.trim()
-  }
-  if (selectedNodeId.value !== 'all') {
-    filters.node_id = Number(selectedNodeId.value)
-  }
+  if (searchTerm.value.trim()) filters.search = searchTerm.value.trim()
+  if (selectedNodeId.value !== 'all') filters.node_id = Number(selectedNodeId.value)
   return filters
 }
 
@@ -132,10 +128,7 @@ const fetchNotes = async () => {
 }
 
 const scheduleFetchNotes = () => {
-  if (filterTimer) {
-    clearTimeout(filterTimer)
-  }
-
+  if (filterTimer) clearTimeout(filterTimer)
   filterTimer = setTimeout(() => {
     fetchNotes()
   }, 220)
@@ -172,11 +165,8 @@ watch(searchTerm, (value) => {
   const nextQuery = { ...route.query }
   const normalizedValue = value.trim()
 
-  if (normalizedValue) {
-    nextQuery.search = normalizedValue
-  } else {
-    delete nextQuery.search
-  }
+  if (normalizedValue) nextQuery.search = normalizedValue
+  else delete nextQuery.search
 
   const currentValue = typeof route.query.search === 'string' ? route.query.search : ''
   if (normalizedValue !== currentValue) {
@@ -185,16 +175,11 @@ watch(searchTerm, (value) => {
 })
 
 onBeforeUnmount(() => {
-  if (filterTimer) {
-    clearTimeout(filterTimer)
-  }
+  if (filterTimer) clearTimeout(filterTimer)
 })
 
 const getNodeTitle = (nodeId: number | null) => {
-  if (!nodeId) {
-    return copy.value.generalNode
-  }
-
+  if (!nodeId) return copy.value.generalNode
   return nodes.value.find((node) => node.id === nodeId)?.title || copy.value.unknownNode
 }
 
@@ -202,26 +187,18 @@ const openNote = (id: number) => router.push(`/note/${id}`)
 const editNote = (id: number) => router.push(`/admin/note/edit/${id}`)
 
 const createNote = () => {
-  if (!hasWriteAccess.value) {
-    return
-  }
-
+  if (!hasWriteAccess.value) return
   router.push('/admin/note/create')
 }
 
 const triggerDelete = (note: Note) => {
-  if (!hasWriteAccess.value) {
-    return
-  }
-
+  if (!hasWriteAccess.value) return
   targetNote.value = note
   isDeleteConfirmOpen.value = true
 }
 
 const confirmDelete = async () => {
-  if (!targetNote.value || !hasWriteAccess.value) {
-    return
-  }
+  if (!targetNote.value || !hasWriteAccess.value) return
 
   try {
     await noteApi.deleteNote(targetNote.value.id)
@@ -235,10 +212,10 @@ const confirmDelete = async () => {
 </script>
 
 <template>
-  <div class="mx-auto max-w-6xl px-6 py-8 lg:px-10">
+  <div class="mx-auto max-w-7xl px-6 py-8 lg:px-10">
     <header class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
       <div class="max-w-3xl">
-        <div class="product-eyebrow border border-[rgba(45,122,120,0.14)] bg-white/80 text-[var(--accent)]">
+        <div class="product-eyebrow border border-[rgba(37,99,235,0.14)] bg-white/80 text-[var(--accent)]">
           <span class="h-2.5 w-2.5 rounded-full bg-[var(--accent)]"></span>
           {{ copy.eyebrow }}
         </div>
@@ -267,8 +244,11 @@ const confirmDelete = async () => {
     </div>
 
     <section class="toolbar mt-8">
-      <div class="toolbar-title">{{ copy.filtersTitle }}</div>
-      <div class="scope-pill">{{ copy.resultCount }} {{ notes.length }}</div>
+      <div class="toolbar-head">
+        <div class="toolbar-title">{{ copy.filtersTitle }}</div>
+        <div class="scope-pill">{{ copy.resultCount }} {{ notes.length }}</div>
+      </div>
+
       <div class="toolbar-grid">
         <input v-model="searchTerm" type="text" class="product-input" :placeholder="copy.searchPlaceholder" />
         <select v-model="selectedNodeId" class="product-input">
@@ -360,8 +340,12 @@ const confirmDelete = async () => {
   @apply rounded-[2rem] border border-[rgba(20,33,43,0.08)] bg-[rgba(255,251,245,0.8)] p-5 shadow-[0_14px_36px_rgba(20,33,43,0.04)];
 }
 
+.toolbar-head {
+  @apply flex items-center justify-between gap-4;
+}
+
 .toolbar-title {
-  @apply text-[11px] font-black uppercase tracking-[0.28em] text-[var(--accent)];
+  @apply text-sm font-bold text-[var(--accent)];
 }
 
 .toolbar-grid {
@@ -369,7 +353,7 @@ const confirmDelete = async () => {
 }
 
 .scope-pill {
-  @apply mt-4 inline-flex rounded-full bg-[rgba(20,33,43,0.06)] px-4 py-2 text-[11px] font-black uppercase tracking-[0.22em] text-[var(--ink-main)];
+  @apply inline-flex rounded-full bg-[rgba(20,33,43,0.06)] px-4 py-2 text-sm font-semibold text-[var(--ink-main)];
 }
 
 .table-shell {
@@ -377,7 +361,7 @@ const confirmDelete = async () => {
 }
 
 .table-head {
-  @apply bg-[rgba(20,33,43,0.04)] text-left text-[11px] font-black uppercase tracking-[0.22em] text-[var(--ink-soft)];
+  @apply bg-[rgba(20,33,43,0.04)] text-left text-sm font-semibold text-[var(--ink-soft)];
 }
 
 .row {
@@ -385,27 +369,27 @@ const confirmDelete = async () => {
 }
 
 .pill {
-  @apply inline-flex rounded-full bg-[rgba(20,33,43,0.06)] px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-[var(--ink-main)];
+  @apply inline-flex rounded-full bg-[rgba(20,33,43,0.06)] px-3 py-1 text-sm font-semibold text-[var(--ink-main)];
 }
 
 .pill-brand {
-  @apply bg-[rgba(45,122,120,0.12)] text-[var(--accent)];
+  @apply bg-[rgba(37,99,235,0.12)] text-[var(--accent)];
 }
 
 .secondary-link {
-  @apply text-[11px] font-black uppercase tracking-[0.22em] text-[var(--ink-soft)] transition-all hover:text-[var(--ink-strong)];
+  @apply text-sm font-semibold text-[var(--ink-soft)] transition-all hover:text-[var(--ink-strong)];
 }
 
 .primary-link {
-  @apply text-[11px] font-black uppercase tracking-[0.22em] text-[var(--accent)] transition-all hover:opacity-70;
+  @apply text-sm font-semibold text-[var(--accent)] transition-all hover:opacity-70;
 }
 
 .danger-link {
-  @apply text-[11px] font-black uppercase tracking-[0.22em] text-[var(--danger)] transition-all hover:opacity-70;
+  @apply text-sm font-semibold text-[var(--danger)] transition-all hover:opacity-70;
 }
 
 .banner {
-  @apply rounded-[1.6rem] bg-[rgba(216,110,59,0.08)] px-5 py-4 text-sm font-semibold text-[var(--brand-deep)];
+  @apply rounded-[1.6rem] bg-[rgba(229,106,43,0.08)] px-5 py-4 text-sm font-semibold text-[var(--brand-deep)];
 }
 
 .empty-card {
@@ -417,7 +401,7 @@ const confirmDelete = async () => {
 }
 
 .danger-button {
-  @apply rounded-[1.2rem] px-5 py-3 text-[11px] font-black uppercase tracking-[0.24em] text-white transition-all;
+  @apply rounded-[1.2rem] px-5 py-3 text-sm font-semibold text-white transition-all;
   background: var(--danger);
 }
 
