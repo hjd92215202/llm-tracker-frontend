@@ -95,22 +95,11 @@ const handleLogin = async () => {
   loading.value = true
 
   try {
-<<<<<<< HEAD
     const session = await authApi.login(form.value)
     authStore.login(session)
     router.push(redirectTarget.value)
   } catch (error: any) {
     errorMessage.value = error.message || copy.value.error
-=======
-    const res = await axios.post('/api/auth/login', form.value)
-    if (res.data.success) {
-      authStore.login(res.data.data.token, res.data.data.user)
-      // 💡 登录成功后直接进入画布页面
-      router.push('/') 
-    }
-  } catch (err: any) {
-    alert(err.response?.data?.error || "Login Failed")
->>>>>>> 799543ebb89fa502829788d34763b5592c9d36c4
   } finally {
     loading.value = false
   }
@@ -118,20 +107,10 @@ const handleLogin = async () => {
 </script>
 
 <template>
-<<<<<<< HEAD
   <div class="page-shell px-5 py-6 md:px-8 md:py-8">
     <div class="product-shell mb-6 flex justify-end">
       <LanguageSwitcher />
     </div>
-=======
-  <div class="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-6">
-    <!-- 登录卡片主体 -->
-    <div class="max-w-md w-full bg-white rounded-[3rem] p-16 shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-700">
-      <header class="text-center mb-12">
-        <h1 class="text-4xl font-black text-slate-900 tracking-tighter uppercase">Identity Access</h1>
-        <p class="text-[10px] font-bold text-slate-400 mt-2 tracking-[0.3em] uppercase">Secure Learning Environment</p>
-      </header>
->>>>>>> 799543ebb89fa502829788d34763b5592c9d36c4
 
     <div class="product-shell grid min-h-[calc(100vh-7.5rem)] items-center gap-8 lg:grid-cols-[0.95fr_1.05fr]">
       <section class="order-2 lg:order-1">
@@ -205,13 +184,5 @@ const handleLogin = async () => {
         </div>
       </section>
     </div>
-
-    <!-- 💡 ICP 备案信息 -->
-    <footer class="mt-12 flex flex-col items-center gap-2">
-      <a href="https://beian.miit.gov.cn/" target="_blank" class="text-[10px] font-bold text-slate-300 hover:text-blue-500 transition-colors tracking-widest uppercase">
-        陕ICP备2026003348号-2
-      </a>
-      <p class="text-[8px] font-black text-slate-200 tracking-[0.4em] uppercase">Neural Infrastructure Control</p>
-    </footer>
   </div>
 </template>
