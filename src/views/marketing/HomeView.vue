@@ -19,7 +19,6 @@ const copy = computed(() =>
         descriptor: 'AI 团队工作台',
         nav: {
           product: '产品能力',
-          scenarios: '适用团队',
           pricing: '价格方案',
         },
         badge: `${BRAND.name} · 让团队协作更清晰`,
@@ -47,21 +46,6 @@ const copy = computed(() =>
           '评估方法笔记已更新，并关联到本周重点节点。',
           '路线图新增两个任务，其中一个已进入执行中。',
         ],
-        proofTitle: '为什么团队会更愿意长期用下去',
-        proofs: [
-          {
-            title: '首页就能抓住重点',
-            description: '打开空间先看到最关键的信息，不需要用户先理解系统结构。',
-          },
-          {
-            title: '团队节奏一眼可见',
-            description: '成员变化、路线图推进和笔记沉淀都能快速串起来看。',
-          },
-          {
-            title: '对新成员也足够友好',
-            description: '新加入的人能快速看懂当前目标、已有结论和接下来要做的事。',
-          },
-        ],
         featureTitle: '围绕团队日常协作，把重点放在最前面',
         features: [
           {
@@ -79,21 +63,6 @@ const copy = computed(() =>
           {
             title: '团队权限',
             description: '不同角色看到不同边界，既能协作，也能让空间保持清晰秩序。',
-          },
-        ],
-        scenariosTitle: '这些团队会最先感受到价值',
-        scenarios: [
-          {
-            title: 'AI 创业团队',
-            description: '适合同时推进产品探索、模型评估、交付协作的小团队。',
-          },
-          {
-            title: '培训与内容团队',
-            description: '适合需要管理课程路线、资料整理和团队复盘的运营场景。',
-          },
-          {
-            title: '实验室与技术组织',
-            description: '适合围绕项目、论文和实验长期沉淀知识与执行记录。',
           },
         ],
         pricingTitle: '从一个团队开始，按协作规模升级',
@@ -125,7 +94,6 @@ const copy = computed(() =>
         descriptor: 'AI workspace for teams',
         nav: {
           product: 'Product',
-          scenarios: 'Teams',
           pricing: 'Pricing',
         },
         badge: `${BRAND.name} · Clearer teamwork for AI teams`,
@@ -153,21 +121,6 @@ const copy = computed(() =>
           'The evaluation note was refreshed and linked to a priority node.',
           'Two new roadmap items were added and one moved into progress.',
         ],
-        proofTitle: 'Why teams keep coming back',
-        proofs: [
-          {
-            title: 'The first screen does the heavy lifting',
-            description: 'Users see the important information first without learning the whole system.',
-          },
-          {
-            title: 'Team momentum is visible',
-            description: 'Members, roadmap movement, and notes are easy to read together.',
-          },
-          {
-            title: 'New teammates ramp faster',
-            description: 'People can quickly understand goals, context, and what needs attention next.',
-          },
-        ],
         featureTitle: 'Built around daily teamwork with the most important things first',
         features: [
           {
@@ -185,21 +138,6 @@ const copy = computed(() =>
           {
             title: 'Permissions',
             description: 'Give every role the right surface while keeping the workspace orderly.',
-          },
-        ],
-        scenariosTitle: 'Teams that feel the value first',
-        scenarios: [
-          {
-            title: 'AI startups',
-            description: 'Great for teams balancing product exploration, evaluation work, and delivery.',
-          },
-          {
-            title: 'Training and content teams',
-            description: 'Useful for course planning, material organization, and operating review loops.',
-          },
-          {
-            title: 'Labs and technical orgs',
-            description: 'Helpful for long-running knowledge and execution around projects, papers, and experiments.',
           },
         ],
         pricingTitle: 'Start with one team and grow with collaboration',
@@ -252,7 +190,6 @@ const copy = computed(() =>
 
         <nav class="hidden items-center gap-7 text-sm font-semibold text-[var(--ink-soft)] lg:flex">
           <a href="#features" class="transition-colors hover:text-[var(--ink-strong)]">{{ copy.nav.product }}</a>
-          <a href="#scenarios" class="transition-colors hover:text-[var(--ink-strong)]">{{ copy.nav.scenarios }}</a>
           <a href="#pricing" class="transition-colors hover:text-[var(--ink-strong)]">{{ copy.nav.pricing }}</a>
         </nav>
 
@@ -359,21 +296,8 @@ const copy = computed(() =>
       </div>
     </section>
 
-    <section class="product-shell pb-6 md:pb-10">
-      <div class="grid gap-5 lg:grid-cols-3">
-        <article v-for="item in copy.proofs" :key="item.title" class="product-panel rounded-[2rem] p-7">
-          <div class="text-sm font-bold text-[var(--ink-strong)]">{{ item.title }}</div>
-          <p class="mt-3 text-sm leading-7 text-[var(--ink-soft)]">{{ item.description }}</p>
-        </article>
-      </div>
-    </section>
-
     <section id="features" class="product-shell py-14 md:py-18">
       <div class="max-w-3xl">
-        <div class="product-eyebrow border border-[rgba(37,99,235,0.14)] bg-white/80 text-[var(--accent)]">
-          <span class="h-2.5 w-2.5 rounded-full bg-[var(--accent)]"></span>
-          {{ copy.proofTitle }}
-        </div>
         <h2 class="product-section-title mt-7">{{ copy.featureTitle }}</h2>
       </div>
 
@@ -383,25 +307,6 @@ const copy = computed(() =>
             {{ feature.title }}
           </h3>
           <p class="mt-4 text-sm leading-7 text-[var(--ink-soft)]">{{ feature.description }}</p>
-        </article>
-      </div>
-    </section>
-
-    <section id="scenarios" class="product-shell py-14 md:py-18">
-      <div class="max-w-3xl">
-        <div class="product-eyebrow border border-[rgba(229,106,43,0.14)] bg-white/80 text-[var(--brand)]">
-          <span class="h-2.5 w-2.5 rounded-full bg-[var(--brand)]"></span>
-          {{ copy.nav.scenarios }}
-        </div>
-        <h2 class="product-section-title mt-7">{{ copy.scenariosTitle }}</h2>
-      </div>
-
-      <div class="mt-10 grid gap-5 lg:grid-cols-3">
-        <article v-for="item in copy.scenarios" :key="item.title" class="product-panel rounded-[2rem] p-7">
-          <h3 class="font-[var(--font-display)] text-3xl font-black tracking-[-0.05em] text-[var(--ink-strong)]">
-            {{ item.title }}
-          </h3>
-          <p class="mt-4 text-sm leading-7 text-[var(--ink-soft)]">{{ item.description }}</p>
         </article>
       </div>
     </section>
