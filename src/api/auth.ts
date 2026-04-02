@@ -1,9 +1,10 @@
 import request from './request';
-import type { ApiResponse, User } from '@/types';
+import type { AuthLoginResponse, AuthSession, User } from '@/types';
 
 export const authApi = {
-  register: (data: any) => request.post<any, ApiResponse<any>>('/auth/register', data),
-  login: (data: any) => request.post<any, { token: string, user: User }>('/auth/login', data),
-  // 💡 新增：同步用户信息
-  getMe: () => request.get<any, User>('/auth/me'),
+  register: (data: { username: string; email: string; password: string }) =>
+    request.post<any, User>('/auth/register', data),
+  login: (data: { username: string; password: string }) =>
+    request.post<any, AuthLoginResponse>('/auth/login', data),
+  getMe: () => request.get<any, AuthSession>('/auth/me'),
 };

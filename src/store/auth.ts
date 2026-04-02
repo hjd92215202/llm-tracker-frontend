@@ -1,73 +1,127 @@
 import { defineStore } from 'pinia';
+import type { AuthLoginResponse, AuthSession, User, WorkspaceMembership, WorkspaceRole } from '@/types';
 
-// 1. 定义用户信息类型 (与 Rust 后端 User 模型对应)
-export interface User {
-  id: number;
-  username: string;
-  email: string;
-}
-
-// 2. 定义 Store 状态类型
 interface AuthState {
   token: string | null;
   user: User | null;
+  workspaces: WorkspaceMembership[];
+  activeWorkspaceId: number | null;
 }
 
-export const useAuthStore = defineStore('auth', {
-  // 💡 状态初始化：增加异常保护
-  state: (): AuthState => {
-    let savedUser = null;
-    try {
-      const userJson = localStorage.getItem('user');
-      savedUser = userJson ? JSON.parse(userJson) : null;
-    } catch (e) {
-      console.error('Failed to parse user from localStorage', e);
-      localStorage.removeItem('user');
-    }
+const parseStoredJson = <T>(key: string, fallback: T): T => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch (error) {
+    console.error(`Failed to parse persisted auth state for ${key}`, error);
+    localStorage.removeItem(key);
+    return fallback;
+  }
+};
 
-    return {
-      token: localStorage.getItem('token') || null,
-      user: savedUser,
-    };
-  },
+const parseStoredNumber = (key: string): number | null => {
+  const raw = localStorage.getItem(key);
+  if (!raw) {
+    return null;
+  }
+
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
+};
+
+export const useAuthStore = defineStore('auth', {
+  state: (): AuthState => ({
+    token: localStorage.getItem('token'),
+    user: parseStoredJson<User | null>('user', null),
+    workspaces: parseStoredJson<WorkspaceMembership[]>('workspaces', []),
+    activeWorkspaceId: parseStoredNumber('activeWorkspaceId'),
+  }),
 
   getters: {
-    // 💡 计算属性：判断是否已登录
-    isLoggedIn: (state) => !!state.token && !!state.user,
-    
-    // 获取用户 ID (方便用于关联笔记)
-    userId: (state) => state.user?.id || null,
+    isLoggedIn: (state) => Boolean(state.token),
+    userId: (state) => state.user?.id ?? null,
+    activeWorkspace: (state) =>
+      state.workspaces.find((workspace) => workspace.workspace_id === state.activeWorkspaceId) ?? null,
+    activeRole(): WorkspaceRole | null {
+      return this.activeWorkspace?.role ?? null;
+    },
+    hasWriteAccess(): boolean {
+      return ['owner', 'admin', 'member'].includes(this.activeRole ?? '');
+    },
+    canManageMembers(): boolean {
+      return ['owner', 'admin'].includes(this.activeRole ?? '');
+    },
   },
 
   actions: {
-    /**
-     * 执行登录成功后的状态存储
-     * @param token JWT 令牌
-     * @param user 用户信息对象
-     */
-    login(token: string, user: User) {
-      this.token = token;
-      this.user = user;
+    persistSession() {
+      if (this.token) {
+        localStorage.setItem('token', this.token);
+      } else {
+        localStorage.removeItem('token');
+      }
 
-      // 持久化存储
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      
-      console.log(`✅ [Auth] 用户 ${user.username} 状态已同步至 Pinia`);
+      if (this.user) {
+        localStorage.setItem('user', JSON.stringify(this.user));
+      } else {
+        localStorage.removeItem('user');
+      }
+
+      localStorage.setItem('workspaces', JSON.stringify(this.workspaces));
+
+      if (this.activeWorkspaceId) {
+        localStorage.setItem('activeWorkspaceId', String(this.activeWorkspaceId));
+      } else {
+        localStorage.removeItem('activeWorkspaceId');
+      }
     },
 
-    /**
-     * 注销并清理所有状态
-     */
+    setSession(session: AuthSession, token?: string | null) {
+      this.token = token ?? this.token;
+      this.user = session.user;
+      this.workspaces = session.workspaces;
+
+      const resolvedWorkspaceId =
+        session.workspaces.find((workspace) => workspace.workspace_id === this.activeWorkspaceId)?.workspace_id ??
+        session.workspaces.find((workspace) => workspace.workspace_id === session.active_workspace_id)?.workspace_id ??
+        session.workspaces[0]?.workspace_id ??
+        null;
+
+      this.activeWorkspaceId = resolvedWorkspaceId;
+      this.persistSession();
+    },
+
+    login(session: AuthLoginResponse) {
+      this.setSession(session, session.token);
+    },
+
+    setActiveWorkspace(workspaceId: number) {
+      const exists = this.workspaces.some((workspace) => workspace.workspace_id === workspaceId);
+      if (!exists) {
+        return;
+      }
+
+      this.activeWorkspaceId = workspaceId;
+      this.persistSession();
+    },
+
+    appendWorkspace(workspace: WorkspaceMembership) {
+      const exists = this.workspaces.some((item) => item.workspace_id === workspace.workspace_id);
+
+      if (!exists) {
+        this.workspaces = [...this.workspaces, workspace];
+      }
+
+      this.activeWorkspaceId = workspace.workspace_id;
+      this.persistSession();
+    },
+
     logout() {
       this.token = null;
       this.user = null;
-
-      // 清理持久化数据
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      
-      console.log('🚪 [Auth] 用户已退出登录，状态已清理');
-    }
-  }
+      this.workspaces = [];
+      this.activeWorkspaceId = null;
+      this.persistSession();
+    },
+  },
 });

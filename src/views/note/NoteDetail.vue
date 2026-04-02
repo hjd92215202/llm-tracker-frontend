@@ -1,151 +1,189 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { noteApi } from '@/api/note'
-import { roadmapApi } from '@/api/roadmap' 
-import type { Note, RoadmapNode } from '@/types'
-import { MdPreview, MdCatalog } from 'md-editor-v3'
+import { MdCatalog, MdPreview } from 'md-editor-v3'
 import 'md-editor-v3/lib/preview.css'
+import { noteApi } from '@/api/note'
+import { roadmapApi } from '@/api/roadmap'
+import { useAuthStore } from '@/store/auth'
+import { useLocaleStore } from '@/store/locale'
+import type { Artifact, Note, RoadmapNode } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
+const localeStore = useLocaleStore()
 
 const note = ref<Note | null>(null)
-const artifacts = ref<any[]>([])
-const roadmapNodes = ref<RoadmapNode[]>([]) 
+const artifacts = ref<Artifact[]>([])
+const roadmapNodes = ref<RoadmapNode[]>([])
 const loading = ref(true)
+const errorMessage = ref('')
 const scrollElement = document.documentElement
 
-// 侧边栏折叠状态
-const isCatalogOpen = ref(false)
+const copy = computed(() =>
+  localeStore.isChinese
+    ? {
+        back: '返回笔记',
+        edit: '编辑笔记',
+        loading: '正在加载笔记详情...',
+        loadError: '加载笔记详情失败',
+        workspaceFallback: '当前空间',
+        generalNode: '通用记录',
+        nodeFallback: '节点',
+        outline: '内容目录',
+        readingTime: '分钟阅读',
+        linkedArtifacts: '关联资料',
+        untitledArtifact: '未命名资料',
+        openResource: '打开链接',
+        emptyArtifacts: '这条笔记还没有关联资料。',
+      }
+    : {
+        back: 'Back to notes',
+        edit: 'Edit note',
+        loading: 'Loading note detail...',
+        loadError: 'Unable to load note detail',
+        workspaceFallback: 'Workspace',
+        generalNode: 'General',
+        nodeFallback: 'Node',
+        outline: 'Outline',
+        readingTime: 'min read',
+        linkedArtifacts: 'Linked artifacts',
+        untitledArtifact: 'Untitled artifact',
+        openResource: 'Open resource',
+        emptyArtifacts: 'No linked artifacts yet.',
+      }
+)
 
-const goBack = () => router.push('/')
-const toggleCatalog = () => isCatalogOpen.value = !isCatalogOpen.value
-
-// 计算属性：根据 note.node_id 获取匹配的节点标题
 const currentNodeTitle = computed(() => {
-  if (!note.value || !note.value.node_id) return 'Unsorted Note'
-  const target = roadmapNodes.value.find(n => n.id === note.value?.node_id)
-  return target ? target.title : `Node ${note.value.node_id}`
+  if (!note.value?.node_id) {
+    return copy.value.generalNode
+  }
+
+  return roadmapNodes.value.find((node) => node.id === note.value?.node_id)?.title ?? `${copy.value.nodeFallback} ${note.value.node_id}`
 })
 
-onMounted(async () => {
-  const id = Number(route.params.id)
+const currentWorkspaceName = computed(() => authStore.activeWorkspace?.workspace_name ?? copy.value.workspaceFallback)
+const canEdit = computed(() => authStore.hasWriteAccess)
+const readingTime = computed(() => {
+  const words = note.value?.content.trim().split(/\s+/).filter(Boolean).length ?? 0
+  return Math.max(1, Math.ceil(words / 220))
+})
+
+const fetchDetail = async () => {
+  loading.value = true
+  errorMessage.value = ''
+
   try {
-    const [noteData, nodesData] = await Promise.all([
-      noteApi.getDetail(id),
-      roadmapApi.getNodes()
-    ])
-    
-    // 注意：根据你的拦截器逻辑，此处直接解构
+    const id = Number(route.params.id)
+    const [noteData, nodesData] = await Promise.all([noteApi.getDetail(id), roadmapApi.getNodes()])
     note.value = noteData.note
     artifacts.value = noteData.artifacts
     roadmapNodes.value = nodesData
-  } catch (err) {
-    console.error('Error fetching data:', err)
+  } catch (error: any) {
+    errorMessage.value = error.message || copy.value.loadError
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(fetchDetail)
+
+const goBack = () => router.push('/admin/notes')
+
+const editNote = () => {
+  if (note.value && canEdit.value) {
+    router.push(`/admin/note/edit/${note.value.id}`)
+  }
+}
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50/50 flex flex-col hide-scrollbar">
-    <!-- 1. 顶部导航条：保留原始样式 -->
-    <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-8 py-4">
-      <div class="max-w-7xl mx-auto flex items-center justify-between">
-        <button @click="goBack" class="group flex items-center gap-3 text-slate-400 hover:text-blue-600 transition-all font-black text-[10px] uppercase tracking-[0.2em]">
-          <span class="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center group-hover:border-blue-600 group-hover:-translate-x-1 transition-all">←</span>
-          Exit Module
-        </button>
-        <div v-if="note" class="flex items-center gap-4">
-          <span class="text-[10px] font-black bg-blue-600 text-white px-4 py-1.5 rounded-full uppercase tracking-tighter shadow-lg shadow-blue-500/20">
-            {{ currentNodeTitle }}
-          </span>
-          <div class="h-4 w-px bg-slate-200"></div>
-          <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ new Date(note.created_at).toLocaleDateString() }}</span>
+  <div class="min-h-screen bg-[linear-gradient(180deg,#faf7f0_0%,#f4f1eb_100%)]">
+    <div class="border-b border-[rgba(20,33,43,0.08)] bg-[rgba(255,251,245,0.84)] backdrop-blur">
+      <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4 lg:px-10">
+        <button class="product-button-secondary !px-5 !py-3" type="button" @click="goBack">{{ copy.back }}</button>
+
+        <div class="hidden items-center gap-3 lg:flex">
+          <span class="pill">{{ currentWorkspaceName }}</span>
+          <span class="pill pill-brand">{{ currentNodeTitle }}</span>
+          <button v-if="canEdit" class="product-button-primary !px-5 !py-3" type="button" @click="editNote">
+            {{ copy.edit }}
+          </button>
         </div>
       </div>
-    </nav>
+    </div>
 
-    <!-- 2. 下方内容区 -->
-    <div class="flex-1 flex relative">
-      
-      <!-- 左侧可折叠目录 -->
-      <aside 
-        :class="[isCatalogOpen ? 'w-80' : 'w-16']"
-        class="sticky top-20 h-[calc(100vh-5rem)] border-r border-slate-200/60 bg-white transition-all duration-500 ease-in-out z-40 flex flex-col group"
-      >
-        <button 
-          @click="toggleCatalog"
-          class="h-16 w-full flex items-center justify-center border-b border-slate-100 hover:bg-slate-50 transition-colors"
-        >
-          <span v-if="!isCatalogOpen" class="text-slate-400 font-black text-xs uppercase tracking-widest rotate-90">Index</span>
-          <span v-else class="text-blue-600 font-black text-xs uppercase tracking-widest">Close</span>
-        </button>
+    <div v-if="loading" class="mx-auto max-w-5xl px-6 py-24 text-center text-sm font-semibold text-[var(--ink-soft)] lg:px-10">
+      {{ copy.loading }}
+    </div>
 
-        <div v-show="isCatalogOpen" class="flex-1 overflow-y-auto p-8 animate-in fade-in duration-700">
-          <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mb-8 pb-4 border-b border-slate-50">Content Index</h4>
-          <MdCatalog 
-            :editorId="'preview-only'" 
-            :scrollElement="scrollElement" 
-            class="text-sm font-bold text-slate-600 catalog-custom" 
-          />
-        </div>
-      </aside>
+    <div v-else-if="errorMessage" class="mx-auto max-w-5xl px-6 py-24 lg:px-10">
+      <div class="product-error px-6 py-5 text-sm font-semibold">{{ errorMessage }}</div>
+    </div>
 
-      <!-- 正文主体：保持居中 -->
-      <main class="flex-1 min-w-0 bg-white shadow-[inset_1px_0_0_0_rgba(0,0,0,0.02)]">
-        <div v-if="loading" class="py-40 text-center flex flex-col items-center gap-6">
-          <div class="w-12 h-12 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        </div>
+    <div v-else-if="note" class="mx-auto max-w-7xl px-6 py-8 lg:px-10">
+      <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
+        <main class="min-w-0">
+          <section class="rounded-[2rem] border border-[rgba(20,33,43,0.08)] bg-[rgba(255,255,255,0.72)] p-8 shadow-[0_18px_50px_rgba(20,33,43,0.05)]">
+            <div class="flex flex-wrap items-center gap-3">
+              <span class="pill pill-brand">{{ currentNodeTitle }}</span>
+              <span class="pill">{{ new Date(note.created_at).toLocaleDateString(localeStore.locale) }}</span>
+              <span class="pill">{{ readingTime }} {{ copy.readingTime }}</span>
+            </div>
 
-        <div v-else-if="note" class="max-w-4xl mx-auto py-16 px-8 lg:px-16 transition-all duration-700 animate-in fade-in slide-in-from-bottom-4">
-          <header class="mb-6"> 
-            <h1 class="text-5xl font-black text-slate-900 leading-tight mb-8">
-              {{ note.title }}
-            </h1>
-            <div class="flex flex-wrap gap-2">
-              <span v-for="tag in note.tags" :key="tag" 
-                    class="text-[10px] font-black text-blue-500 bg-blue-50 px-3 py-1 rounded-md uppercase tracking-tighter border border-blue-100">
+            <h1 class="product-title mt-6 text-4xl leading-[0.96] md:text-6xl">{{ note.title }}</h1>
+
+            <div v-if="note.tags?.length" class="mt-6 flex flex-wrap gap-2">
+              <span
+                v-for="tag in note.tags"
+                :key="tag"
+                class="rounded-full border border-[rgba(20,33,43,0.08)] bg-[rgba(255,250,242,0.9)] px-3 py-1 text-[11px] font-black text-[var(--ink-main)]"
+              >
                 #{{ tag }}
               </span>
             </div>
-          </header>
+          </section>
 
-          <!-- Markdown 内容渲染 -->
-          <article>
-            <MdPreview 
-              :modelValue="note.content" 
-              :editorId="'preview-only'" 
-              theme="light" 
-              class="bg-transparent! no-padding-preview" 
-              :codeFoldable="true"
-            />
+          <article class="note-body mt-6 rounded-[2rem] border border-[rgba(20,33,43,0.08)] bg-[rgba(255,255,255,0.76)] px-8 py-10 shadow-[0_18px_50px_rgba(20,33,43,0.05)]">
+            <MdPreview :modelValue="note.content" :editorId="'note-preview'" theme="light" class="bg-transparent! no-padding-preview" />
           </article>
+        </main>
 
-          <!-- 附件成果：修复内容显示 -->
-          <footer v-if="artifacts.length > 0" class="mt-24 pt-16 border-t-2 border-dashed border-slate-100">
-            <h3 class="text-2xl font-black text-slate-900 mb-10 tracking-tight flex items-center gap-4">
-              Artifacts
-              <span class="h-px flex-1 bg-slate-100"></span>
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <a v-for="item in artifacts" :key="item.id" :href="item.content_url" target="_blank"
-                 class="group p-8 rounded-4xl bg-slate-50/50 border border-slate-100 hover:border-blue-500 hover:bg-white hover:shadow-2xl transition-all duration-500 relative overflow-hidden">
-                 <div class="relative z-10">
-                   <div class="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-3">{{ item.artifact_type }}</div>
-                   <div class="text-xl font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{{ item.title || 'Untitled Source' }}</div>
-                   <div class="mt-6 flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest group-hover:text-slate-900 transition-colors">
-                     Access Resource <span>→</span>
-                   </div>
-                 </div>
+        <aside class="space-y-6">
+          <section class="rounded-[1.8rem] border border-[rgba(20,33,43,0.08)] bg-[rgba(255,251,245,0.84)] p-5 shadow-[0_14px_36px_rgba(20,33,43,0.04)]">
+            <div class="text-[11px] font-black uppercase tracking-[0.24em] text-[var(--brand)]">{{ copy.outline }}</div>
+            <div class="mt-4 text-sm text-[var(--ink-main)]">
+              <MdCatalog :editorId="'note-preview'" :scrollElement="scrollElement" />
+            </div>
+          </section>
+
+          <section class="rounded-[1.8rem] border border-[rgba(20,33,43,0.08)] bg-[rgba(255,251,245,0.84)] p-5 shadow-[0_14px_36px_rgba(20,33,43,0.04)]">
+            <div class="text-[11px] font-black uppercase tracking-[0.24em] text-[var(--brand)]">{{ copy.linkedArtifacts }}</div>
+
+            <div v-if="artifacts.length > 0" class="mt-4 space-y-3">
+              <a
+                v-for="artifact in artifacts"
+                :key="artifact.id"
+                :href="artifact.content_url"
+                target="_blank"
+                class="artifact-card"
+              >
+                <div class="text-[10px] font-black uppercase tracking-[0.22em] text-[var(--accent)]">{{ artifact.artifact_type }}</div>
+                <div class="mt-2 text-sm font-black leading-6 text-[var(--ink-strong)]">
+                  {{ artifact.title || copy.untitledArtifact }}
+                </div>
+                <div class="mt-2 break-all text-sm leading-6 text-[var(--ink-soft)]">{{ artifact.content_url }}</div>
+                <div class="mt-3 text-[11px] font-black text-[var(--brand)]">{{ copy.openResource }}</div>
               </a>
             </div>
-          </footer>
-        </div>
-      </main>
 
+            <div v-else class="mt-4 text-sm font-semibold leading-7 text-[var(--ink-soft)]">
+              {{ copy.emptyArtifacts }}
+            </div>
+          </section>
+        </aside>
+      </div>
     </div>
   </div>
 </template>
@@ -153,47 +191,60 @@ onMounted(async () => {
 <style lang="postcss" scoped>
 @reference "@/style.css";
 
-/* 💡 深度优化：移除预览组件自带的冗余边距 */
+.pill {
+  @apply inline-flex rounded-full bg-[rgba(20,33,43,0.06)] px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-[var(--ink-main)];
+}
+
+.pill-brand {
+  @apply bg-[rgba(216,110,59,0.12)] text-[var(--brand)];
+}
+
+.artifact-card {
+  @apply block rounded-[1.4rem] border border-[rgba(20,33,43,0.08)] bg-[rgba(255,255,255,0.72)] px-4 py-4 transition-all;
+}
+
+.artifact-card:hover {
+  box-shadow: 0 14px 30px rgba(20, 33, 43, 0.06);
+  transform: translateY(-1px);
+}
+
 :deep(.md-editor-preview) {
   padding-top: 0 !important;
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.95;
+  color: var(--ink-main);
+}
+
+:deep(.md-editor-preview h1),
+:deep(.md-editor-preview h2),
+:deep(.md-editor-preview h3) {
+  @apply mt-12 mb-5 font-[var(--font-display)] font-black tracking-tight text-[var(--ink-strong)];
+}
+
+:deep(.md-editor-preview pre) {
+  @apply my-10 overflow-x-auto rounded-[1.4rem] border border-[rgba(20,33,43,0.12)] bg-[var(--ink-strong)] p-6;
+}
+
+:deep(.md-editor-preview code:not(pre code)) {
+  @apply rounded bg-[rgba(20,33,43,0.06)] px-2 py-0.5 font-mono text-[0.9em] text-[var(--ink-strong)];
+  font-family: var(--font-mono);
+}
+
+:deep(.katex-display) {
+  @apply my-8 overflow-x-auto rounded-[1.4rem] border border-[rgba(20,33,43,0.08)] bg-[rgba(255,250,242,0.8)] p-6;
 }
 
 :deep(.md-editor-catalog-active > .md-editor-catalog-link) {
-  @apply text-blue-600 !important;
+  color: var(--brand) !important;
 }
 
 :deep(.md-editor-catalog-link span) {
-  @apply transition-all duration-300;
+  transition: all 0.2s ease;
 }
 
 :deep(.md-editor-catalog-active > .md-editor-catalog-link span) {
-  @apply pl-4 border-l-2 border-blue-600 -ml-0.5;
-}
-
-:deep(.md-editor-preview) {
-  font-family: 'Inter', -apple-system, sans-serif;
-  font-size: 1.1rem;
-  line-height: 2;
-  color: #1e293b;
-}
-
-/* 极客感代码块 */
-:deep(.md-editor-preview pre) {
-  @apply rounded-3xl bg-slate-950 p-10! shadow-2xl my-14 border border-slate-800 relative;
-}
-
-/* 公式块适配 */
-:deep(.katex-display) {
-  @apply my-12 p-10 bg-slate-50 rounded-4xl border border-slate-100 overflow-x-auto;
-}
-
-/* 行内代码 */
-:deep(.md-editor-preview code:not(pre code)) {
-  @apply bg-slate-100 text-slate-900 px-2 py-0.5 rounded font-mono text-[0.9em] border border-slate-200 mx-1;
-}
-
-/* 标题样式 */
-:deep(.md-editor-preview h1, .md-editor-preview h2, .md-editor-preview h3) {
-  @apply font-black tracking-tight text-slate-900 mt-16 mb-8;
+  border-left: 2px solid var(--brand);
+  padding-left: 14px;
 }
 </style>
