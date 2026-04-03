@@ -54,6 +54,13 @@ const copy = computed(() =>
         todo: '待开始',
         inProgress: '进行中',
         completed: '已完成',
+        firstRoadmapTitle: '先画出你的第一条主线',
+        firstRoadmapSummary: '先从一个节点开始，把你现在最重要的方向放上来。后面再继续补节点、笔记和细节。',
+        firstRoadmapAction: '创建第一个节点',
+        readonlyRoadmapSummary: '这个空间还没有路线图，等拥有写权限的成员先补上主线。',
+        firstNotesTitle: '节点内容会跟在路线图下面',
+        firstNotesSummary: '先把路线画出来，再把方法、结论和过程补到对应节点下面，整个协作流会更清晰。',
+        firstSteps: ['先放一个当前最重要的节点', '再把后续节点接在主线上', '最后补充每个节点下面的笔记'],
       }
     : {
         title: 'Roadmap',
@@ -81,10 +88,18 @@ const copy = computed(() =>
         todo: 'Todo',
         inProgress: 'In progress',
         completed: 'Completed',
+        firstRoadmapTitle: 'Start with the first node on your roadmap',
+        firstRoadmapSummary: 'Put the current priority on the path first. You can add more nodes, notes, and detail right after.',
+        firstRoadmapAction: 'Create first node',
+        readonlyRoadmapSummary: 'This workspace does not have a roadmap yet. Wait for someone with write access to set up the path.',
+        firstNotesTitle: 'Node content appears right under the roadmap',
+        firstNotesSummary: 'Add the path first, then attach methods, findings, and decisions to the right node.',
+        firstSteps: ['Add the current priority first', 'Connect the next nodes onto the path', 'Fill each node with notes and detail'],
       }
 )
 
 const workspaceName = computed(() => authStore.activeWorkspace?.workspace_name || copy.value.title)
+const hasNodes = computed(() => nodes.value.length > 0)
 const roadmapProgress = computed(() => {
   if (nodes.value.length === 0) return 0
   const completed = nodes.value.filter((node) => node.status === 'completed').length
@@ -129,6 +144,11 @@ const statusLabel = (status: RoadmapNode['status']) => {
   if (status === 'completed') return copy.value.completed
   if (status === 'in_progress') return copy.value.inProgress
   return copy.value.todo
+}
+
+const openFirstNode = () => {
+  if (!authStore.hasWriteAccess) return
+  router.push('/admin/roadmap?create=1')
 }
 
 const fetchRoadmap = async () => {
@@ -180,7 +200,7 @@ const createNote = () => {
 }
 
 const copyShareLink = async () => {
-  if (!authStore.activeWorkspaceId) return
+  if (!authStore.activeWorkspaceId || !hasNodes.value) return
 
   try {
     const share = await workspaceApi.createShareLink(authStore.activeWorkspaceId)
@@ -241,7 +261,7 @@ watch(
         </div>
 
         <div class="roadmap-actions">
-          <button class="product-button-secondary !px-4 !py-2.5" type="button" @click="copyShareLink">
+          <button v-if="hasNodes" class="product-button-secondary !px-4 !py-2.5" type="button" @click="copyShareLink">
             {{ copy.shareAction }}
           </button>
           <button
@@ -262,6 +282,32 @@ watch(
       <div class="roadmap-canvas-shell">
         <div v-if="loading" class="admin-empty !border-none !bg-transparent !p-0">{{ copy.loading }}</div>
 
+        <div v-else-if="!hasNodes" class="roadmap-empty-shell">
+          <div class="roadmap-empty-card">
+            <div class="roadmap-empty-kicker">{{ workspaceName }}</div>
+            <h2 class="mt-4 text-3xl font-black tracking-[-0.05em] text-[var(--ink-strong)] md:text-4xl">
+              {{ copy.firstRoadmapTitle }}
+            </h2>
+            <p class="mt-4 max-w-2xl text-sm leading-8 text-[var(--ink-soft)] md:text-base">
+              {{ authStore.hasWriteAccess ? copy.firstRoadmapSummary : copy.readonlyRoadmapSummary }}
+            </p>
+
+            <div class="mt-6 flex flex-wrap gap-3">
+              <button
+                v-if="authStore.hasWriteAccess"
+                class="product-button-dark"
+                type="button"
+                @click="openFirstNode"
+              >
+                {{ copy.firstRoadmapAction }}
+              </button>
+              <button class="product-button-secondary" type="button" @click="router.push('/admin/workspace')">
+                {{ workspaceName }}
+              </button>
+            </div>
+          </div>
+        </div>
+
         <VueFlow
           v-else
           class="h-full w-full bg-transparent"
@@ -278,7 +324,7 @@ watch(
           <Controls />
         </VueFlow>
 
-        <div v-if="!loading" class="roadmap-canvas-hint">
+        <div v-if="hasNodes" class="roadmap-canvas-hint">
           {{ selectedNode ? selectedNode.title : copy.openCanvas }}
         </div>
       </div>
@@ -333,6 +379,22 @@ watch(
         </div>
         <div v-else class="admin-empty mt-4">{{ copy.noNotes }}</div>
       </template>
+
+      <div v-else-if="!hasNodes" class="roadmap-empty-notes">
+        <div class="text-base font-semibold text-[var(--ink-strong)] md:text-lg">{{ copy.firstNotesTitle }}</div>
+        <p class="mt-3 max-w-3xl text-sm leading-8 text-[var(--ink-soft)] md:text-base">{{ copy.firstNotesSummary }}</p>
+
+        <div class="mt-6 grid gap-3 md:grid-cols-3">
+          <article
+            v-for="(step, index) in copy.firstSteps"
+            :key="step"
+            class="rounded-[1.4rem] border border-[rgba(15,23,42,0.08)] bg-[rgba(247,247,245,0.78)] px-4 py-4"
+          >
+            <div class="text-xs font-black uppercase tracking-[0.16em] text-[var(--brand)]">{{ index + 1 }}</div>
+            <div class="mt-3 text-sm font-semibold leading-7 text-[var(--ink-main)]">{{ step }}</div>
+          </article>
+        </div>
+      </div>
 
       <div v-else class="admin-empty">{{ copy.emptyHint }}</div>
     </section>
@@ -396,6 +458,33 @@ watch(
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 247, 245, 0.94));
 }
 
+.roadmap-empty-shell {
+  display: grid;
+  min-height: 100%;
+  place-items: center;
+  padding: 28px;
+}
+
+.roadmap-empty-card {
+  width: min(720px, 100%);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 32px;
+  background: rgba(255, 255, 255, 0.84);
+  padding: 32px;
+  box-shadow: 0 28px 70px rgba(20, 33, 43, 0.08);
+}
+
+.roadmap-empty-kicker {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  padding: 8px 12px;
+  color: var(--ink-main);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .roadmap-canvas-hint {
   position: absolute;
   left: 22px;
@@ -413,6 +502,12 @@ watch(
 
 .roadmap-note-card {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(250, 250, 248, 0.96));
+}
+
+.roadmap-empty-notes {
+  border-radius: 24px;
+  background: rgba(248, 248, 246, 0.72);
+  padding: 20px;
 }
 
 :deep(.roadmap-node) {
@@ -449,6 +544,10 @@ watch(
     align-items: end;
     justify-content: space-between;
     padding: 24px 24px 20px;
+  }
+
+  .roadmap-empty-card {
+    padding: 40px;
   }
 }
 </style>
