@@ -23,28 +23,29 @@ const copy = computed(() =>
     ? {
         kicker: '空间',
         title: '空间与成员',
-        summary: '切换空间、生成邀请链接、管理成员权限。',
+        summary: '先切换当前空间，再邀请成员加入。',
+        currentTitle: '当前空间',
+        currentHint: '你现在正在推进的空间',
         createTitle: '新建空间',
         createPlaceholder: '例如：产品增长 / 客户交付 / 研究实验',
         createAction: '创建空间',
         creating: '创建中...',
-        workspacesTitle: '空间列表',
-        membersTitle: '成员与权限',
-        inviteTitle: '邀请链接',
-        inviteSummary: '生成一个链接发给对方。对方登录或注册后，就能加入当前空间。',
+        inviteTitle: '邀请加入',
+        inviteHint: '发给对方即可加入当前空间',
         inviteAction: '生成邀请链接',
         inviteGenerating: '生成中...',
-        inviteLinkLabel: '当前邀请链接',
-        inviteLinkEmpty: '生成后会显示在这里',
+        inviteLinkLabel: '邀请链接',
+        inviteLinkEmpty: '生成后显示在这里',
+        inviteRoleLabel: '加入身份',
         copyInvite: '复制链接',
         copied: '链接已复制',
         inviteExpires: '链接 7 天后失效',
-        remove: '移除',
+        membersTitle: '成员',
         manageEnabled: '可管理',
-        readOnly: '只读查看',
-        emptyName: '空间名称不能为空',
-        noMembers: '这个空间还没有成员。',
+        readOnly: '只读',
         loading: '正在加载成员...',
+        noMembers: '当前还没有其他成员。',
+        emptyName: '空间名称不能为空',
         createError: '创建空间失败',
         inviteError: '生成邀请链接失败',
         updateError: '更新成员角色失败',
@@ -53,32 +54,38 @@ const copy = computed(() =>
         selfHint: '不能在这里移除自己。',
         ownerOnlyHint: '只有所有者可以调整所有者角色。',
         removeConfirm: '确认将 {name} 从 {workspace} 中移除吗？',
+        remove: '移除',
+        joinedAt: '加入时间',
+        totalMembers: '成员',
+        totalSpaces: '空间',
+        currentBadge: '当前',
       }
     : {
         kicker: 'Workspace',
         title: 'Workspace and members',
-        summary: 'Switch workspaces, generate invite links, and manage access.',
+        summary: 'Switch the active workspace first, then invite people into it.',
+        currentTitle: 'Current workspace',
+        currentHint: 'The space you are working in now',
         createTitle: 'Create workspace',
         createPlaceholder: 'For example: Growth / Delivery / Research',
         createAction: 'Create workspace',
         creating: 'Creating...',
-        workspacesTitle: 'Workspace list',
-        membersTitle: 'Members and roles',
-        inviteTitle: 'Invite link',
-        inviteSummary: 'Generate one link and send it out. People can join after signing in or registering.',
+        inviteTitle: 'Invite people',
+        inviteHint: 'Send the link and they can join this workspace',
         inviteAction: 'Generate invite link',
         inviteGenerating: 'Generating...',
-        inviteLinkLabel: 'Current invite link',
+        inviteLinkLabel: 'Invite link',
         inviteLinkEmpty: 'The link appears here after generation',
+        inviteRoleLabel: 'Role',
         copyInvite: 'Copy link',
         copied: 'Link copied',
         inviteExpires: 'The link expires in 7 days',
-        remove: 'Remove',
+        membersTitle: 'Members',
         manageEnabled: 'Can manage',
         readOnly: 'Read only',
-        emptyName: 'Workspace name cannot be empty',
-        noMembers: 'This workspace has no members yet.',
         loading: 'Loading members...',
+        noMembers: 'There are no other members yet.',
+        emptyName: 'Workspace name cannot be empty',
         createError: 'Unable to create workspace',
         inviteError: 'Unable to generate invite link',
         updateError: 'Unable to update member role',
@@ -87,10 +94,16 @@ const copy = computed(() =>
         selfHint: 'You cannot remove yourself here.',
         ownerOnlyHint: 'Only an owner can change another owner role.',
         removeConfirm: 'Remove {name} from {workspace}?',
+        remove: 'Remove',
+        joinedAt: 'Joined',
+        totalMembers: 'Members',
+        totalSpaces: 'Workspaces',
+        currentBadge: 'Current',
       }
 )
 
 const currentWorkspaceId = computed(() => authStore.activeWorkspaceId)
+const currentWorkspace = computed(() => authStore.activeWorkspace)
 const canManageMembers = computed(() => authStore.canManageMembers)
 
 const roleLabel = computed<Record<WorkspaceRole, string>>(() =>
@@ -237,7 +250,7 @@ const removeMember = async (member: WorkspaceMember) => {
 
   const text = copy.value.removeConfirm
     .replace('{name}', member.username)
-    .replace('{workspace}', authStore.activeWorkspace?.workspace_name || 'workspace')
+    .replace('{workspace}', currentWorkspace.value?.workspace_name || 'workspace')
 
   if (!window.confirm(text)) return
 
@@ -272,103 +285,45 @@ watch(
       {{ errorMessage }}
     </div>
 
-    <section class="mt-6 grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
+    <section class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
       <div class="space-y-6">
         <article class="admin-card p-6">
-          <div class="admin-card-title">{{ copy.createTitle }}</div>
-          <div class="mt-4 flex flex-col gap-3">
-            <input
-              v-model="createWorkspaceName"
-              type="text"
-              class="admin-input"
-              :placeholder="copy.createPlaceholder"
-              @keyup.enter="handleCreateWorkspace"
-            />
-            <button class="product-button-dark w-full" type="button" :disabled="creatingWorkspace" @click="handleCreateWorkspace">
-              {{ creatingWorkspace ? copy.creating : copy.createAction }}
-            </button>
-          </div>
-        </article>
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div class="min-w-0">
+              <div class="admin-card-title">{{ copy.currentTitle }}</div>
+              <p class="admin-card-copy">{{ copy.currentHint }}</p>
+              <div class="mt-4 text-2xl font-bold tracking-[-0.04em] text-[var(--ink-strong)]">
+                {{ currentWorkspace?.workspace_name || '--' }}
+              </div>
+            </div>
 
-        <article class="admin-card p-6">
-          <div class="admin-card-title">{{ copy.workspacesTitle }}</div>
+            <div class="flex flex-wrap gap-2">
+              <span class="admin-chip">{{ copy.totalSpaces }} {{ authStore.workspaces.length }}</span>
+              <span class="admin-chip">{{ copy.totalMembers }} {{ members.length }}</span>
+              <span v-if="authStore.activeRole" class="admin-chip-dark">{{ roleLabel[authStore.activeRole] }}</span>
+            </div>
+          </div>
+
           <div class="mt-5 space-y-3">
             <button
               v-for="workspace in authStore.workspaces"
               :key="workspace.workspace_id"
               type="button"
-              class="admin-list-card w-full text-left"
-              :class="authStore.activeWorkspaceId === workspace.workspace_id ? 'border-[rgba(15,23,42,0.16)]' : ''"
+              class="workspace-switcher-card"
+              :class="authStore.activeWorkspaceId === workspace.workspace_id ? 'workspace-switcher-card-active' : ''"
               @click="authStore.setActiveWorkspace(workspace.workspace_id)"
             >
               <div class="min-w-0">
                 <div class="truncate text-base font-semibold text-[var(--ink-strong)]">{{ workspace.workspace_name }}</div>
-                <div class="mt-1 truncate text-sm text-[var(--ink-soft)]">{{ roleLabel[workspace.role] }}</div>
+                <div class="mt-1 text-sm text-[var(--ink-soft)]">{{ roleLabel[workspace.role] }}</div>
               </div>
+              <span v-if="authStore.activeWorkspaceId === workspace.workspace_id" class="admin-chip-dark">{{ copy.currentBadge }}</span>
             </button>
-          </div>
-        </article>
-      </div>
-
-      <div class="space-y-6">
-        <article class="admin-card p-6">
-          <div class="flex items-center justify-between gap-3">
-            <div class="admin-card-title">{{ copy.inviteTitle }}</div>
-            <span :class="canManageMembers ? 'admin-chip-dark' : 'admin-chip'">
-              {{ canManageMembers ? copy.manageEnabled : copy.readOnly }}
-            </span>
-          </div>
-
-          <p class="mt-3 text-sm leading-7 text-[var(--ink-soft)]">{{ copy.inviteSummary }}</p>
-
-          <div class="mt-5 grid gap-3 lg:grid-cols-[180px_auto]">
-            <select v-model="inviteRole" class="admin-select" :disabled="!canManageMembers || creatingInviteLink">
-              <option v-for="role in roleOptions" :key="role" :value="role">
-                {{ roleLabel[role] }}
-              </option>
-            </select>
-
-            <button
-              class="product-button-dark"
-              type="button"
-              :disabled="!canManageMembers || creatingInviteLink"
-              @click="handleCreateInviteLink"
-            >
-              {{ creatingInviteLink ? copy.inviteGenerating : copy.inviteAction }}
-            </button>
-          </div>
-
-          <div class="mt-5 space-y-3">
-            <label class="product-label">{{ copy.inviteLinkLabel }}</label>
-            <div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_140px]">
-              <input
-                :value="currentInviteUrl || copy.inviteLinkEmpty"
-                type="text"
-                class="admin-input"
-                readonly
-              />
-              <button
-                class="product-button-secondary"
-                type="button"
-                :disabled="!currentInviteUrl"
-                @click="copyInviteLink"
-              >
-                {{ copy.copyInvite }}
-              </button>
-            </div>
-            <div class="text-sm text-[var(--ink-soft)]">
-              {{ inviteMessage || copy.inviteExpires }}
-            </div>
           </div>
         </article>
 
         <article class="admin-card p-6">
-          <div class="flex items-center justify-between gap-3">
-            <div class="admin-card-title">{{ copy.membersTitle }}</div>
-            <span :class="canManageMembers ? 'admin-chip-dark' : 'admin-chip'">
-              {{ canManageMembers ? copy.manageEnabled : copy.readOnly }}
-            </span>
-          </div>
+          <div class="admin-card-title">{{ copy.membersTitle }}</div>
 
           <div v-if="loadingMembers" class="admin-empty mt-5">
             {{ copy.loading }}
@@ -379,17 +334,17 @@ watch(
           </div>
 
           <div v-else class="mt-5 space-y-3">
-            <article v-for="member in members" :key="member.user_id" class="admin-list-card">
-              <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px_120px_auto] lg:items-start">
-                <div class="min-w-0">
-                  <div class="text-base font-semibold text-[var(--ink-strong)]">{{ member.username }}</div>
-                  <div class="mt-1 text-sm text-[var(--ink-soft)]">{{ member.email }}</div>
-                  <p v-if="memberHint(member)" class="mt-2 text-sm text-[var(--danger)]">{{ memberHint(member) }}</p>
-                </div>
+            <article v-for="member in members" :key="member.user_id" class="member-row">
+              <div class="min-w-0">
+                <div class="text-base font-semibold text-[var(--ink-strong)]">{{ member.username }}</div>
+                <div class="mt-1 text-sm text-[var(--ink-soft)]">{{ member.email }}</div>
+                <p v-if="memberHint(member)" class="mt-2 text-sm text-[var(--danger)]">{{ memberHint(member) }}</p>
+              </div>
 
+              <div class="member-row-side">
                 <select
                   :value="member.role"
-                  class="admin-select"
+                  class="admin-select !min-w-[130px]"
                   :disabled="!canEditMemberRole(member)"
                   @change="updateRole(member, ($event.target as HTMLSelectElement).value as WorkspaceRole)"
                 >
@@ -398,8 +353,8 @@ watch(
                   </option>
                 </select>
 
-                <div class="pt-3 text-sm text-[var(--ink-soft)] lg:pt-0">
-                  {{ formatDate(member.joined_at) }}
+                <div class="text-sm text-[var(--ink-soft)]">
+                  {{ copy.joinedAt }} {{ formatDate(member.joined_at) }}
                 </div>
 
                 <button
@@ -416,6 +371,95 @@ watch(
           </div>
         </article>
       </div>
+
+      <div class="space-y-6">
+        <article class="admin-card p-6">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <div class="admin-card-title">{{ copy.inviteTitle }}</div>
+              <p class="admin-card-copy">{{ copy.inviteHint }}</p>
+            </div>
+            <span :class="canManageMembers ? 'admin-chip-dark' : 'admin-chip'">
+              {{ canManageMembers ? copy.manageEnabled : copy.readOnly }}
+            </span>
+          </div>
+
+          <div class="mt-5 space-y-4">
+            <div class="space-y-2">
+              <label class="product-label">{{ copy.inviteRoleLabel }}</label>
+              <select v-model="inviteRole" class="admin-select" :disabled="!canManageMembers || creatingInviteLink">
+                <option v-for="role in roleOptions" :key="role" :value="role">
+                  {{ roleLabel[role] }}
+                </option>
+              </select>
+            </div>
+
+            <button
+              class="product-button-dark w-full"
+              type="button"
+              :disabled="!canManageMembers || creatingInviteLink"
+              @click="handleCreateInviteLink"
+            >
+              {{ creatingInviteLink ? copy.inviteGenerating : copy.inviteAction }}
+            </button>
+
+            <div class="space-y-2">
+              <label class="product-label">{{ copy.inviteLinkLabel }}</label>
+              <input :value="currentInviteUrl || copy.inviteLinkEmpty" type="text" class="admin-input" readonly />
+            </div>
+
+            <button class="product-button-secondary w-full" type="button" :disabled="!currentInviteUrl" @click="copyInviteLink">
+              {{ copy.copyInvite }}
+            </button>
+
+            <div class="text-sm text-[var(--ink-soft)]">
+              {{ inviteMessage || copy.inviteExpires }}
+            </div>
+          </div>
+        </article>
+
+        <article class="admin-card p-6">
+          <div class="admin-card-title">{{ copy.createTitle }}</div>
+          <div class="mt-4 flex flex-col gap-3">
+            <input
+              v-model="createWorkspaceName"
+              type="text"
+              class="admin-input"
+              :placeholder="copy.createPlaceholder"
+              @keyup.enter="handleCreateWorkspace"
+            />
+            <button class="product-button-secondary w-full" type="button" :disabled="creatingWorkspace" @click="handleCreateWorkspace">
+              {{ creatingWorkspace ? copy.creating : copy.createAction }}
+            </button>
+          </div>
+        </article>
+      </div>
     </section>
   </div>
 </template>
+
+<style lang="postcss" scoped>
+@reference "@/style.css";
+
+.workspace-switcher-card {
+  @apply flex w-full items-center justify-between gap-3 rounded-[20px] border border-[rgba(15,23,42,0.08)] bg-[rgba(255,255,255,0.94)] px-4 py-4 text-left transition-all;
+}
+
+.workspace-switcher-card:hover {
+  border-color: rgba(15, 23, 42, 0.14);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.04);
+}
+
+.workspace-switcher-card-active {
+  border-color: rgba(229, 106, 43, 0.18);
+  background: rgba(255, 250, 242, 0.92);
+}
+
+.member-row {
+  @apply flex flex-col gap-4 rounded-[20px] border border-[rgba(15,23,42,0.08)] bg-[rgba(255,255,255,0.94)] p-4 xl:flex-row xl:items-center xl:justify-between;
+}
+
+.member-row-side {
+  @apply flex flex-col gap-3 xl:items-end;
+}
+</style>

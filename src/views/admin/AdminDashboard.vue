@@ -18,8 +18,8 @@ const copy = computed(() =>
   localeStore.isChinese
     ? {
         kicker: '总览',
-        title: '先看当前推进，再决定下一步',
-        summary: '这里只回答三件事：路线图是否清晰、笔记是否在沉淀、接下来最该推进什么。',
+        title: '看清当前推进情况',
+        summary: '这里只保留最重要的信息：路线图进度、笔记沉淀和接下来要补的动作。',
         primaryAction: authStore.hasWriteAccess ? '进入路线图' : '查看路线图',
         secondaryAction: authStore.hasWriteAccess ? '进入笔记' : '查看笔记',
         role: '当前角色',
@@ -31,17 +31,17 @@ const copy = computed(() =>
         },
         focusTitle: '当前重点',
         focusRoadmap: '路线图状态',
-        focusNotes: '笔记沉淀',
-        checklistTitle: '接下来该做的事',
-        teamTitle: '协作基础',
-        notesTitle: '最新笔记',
+        focusNotes: '笔记覆盖',
+        checklistTitle: '下一步',
+        teamTitle: '成员结构',
+        notesTitle: '最近笔记',
         noWorkspace: '当前没有可用空间。',
         loading: '正在加载总览...',
         errorFallback: '加载总览失败',
         noSummary: '这条笔记还没有摘要。',
         noNotes: '还没有笔记，先把关键过程记下来。',
         done: '已完成',
-        todo: '下一步',
+        todo: '待处理',
         completed: '已完成',
         inProgress: '进行中',
         pending: '待开始',
@@ -54,8 +54,8 @@ const copy = computed(() =>
       }
     : {
         kicker: 'Overview',
-        title: 'See the current progress before choosing the next move',
-        summary: 'This page answers only three things: whether the roadmap is clear, whether notes are being captured, and what should move next.',
+        title: 'See the current progress',
+        summary: 'Keep only the most important signals here: roadmap progress, note coverage, and what to do next.',
         primaryAction: authStore.hasWriteAccess ? 'Open roadmap' : 'View roadmap',
         secondaryAction: authStore.hasWriteAccess ? 'Open notes' : 'View notes',
         role: 'Current role',
@@ -67,10 +67,10 @@ const copy = computed(() =>
         },
         focusTitle: 'Current focus',
         focusRoadmap: 'Roadmap status',
-        focusNotes: 'Knowledge capture',
-        checklistTitle: 'Next actions',
-        teamTitle: 'Team foundation',
-        notesTitle: 'Latest notes',
+        focusNotes: 'Note coverage',
+        checklistTitle: 'Next steps',
+        teamTitle: 'Team structure',
+        notesTitle: 'Recent notes',
         noWorkspace: 'There is no active workspace.',
         loading: 'Loading overview...',
         errorFallback: 'Unable to load overview',
@@ -110,18 +110,18 @@ const onboardingCopyMap = computed<Record<string, Pick<WorkspaceOnboardingCheckl
   localeStore.isChinese
     ? {
         roadmap_foundation: {
-          title: '补齐路线图基础节点',
-          description: '先把关键路径画出来，团队才能对齐推进顺序。',
+          title: '补齐基础节点',
+          description: '先把主路径画出来，团队才能对齐推进顺序。',
           cta_label: '进入路线图',
         },
         invite_team: {
-          title: '邀请第一批协作者',
-          description: '让空间从个人记录，变成真正的协作空间。',
+          title: '邀请协作者',
+          description: '把空间从个人记录，变成真正的协作空间。',
           cta_label: authStore.canManageMembers ? '管理成员' : '查看空间',
         },
         seed_notes: {
-          title: '记录首批关键笔记',
-          description: '把结论、实验和方法沉淀下来，后面才有复用价值。',
+          title: '补上关键笔记',
+          description: '把结论、方法和实验写下来，后面才有复用价值。',
           cta_label: '进入笔记',
         },
       }
@@ -132,12 +132,12 @@ const onboardingCopyMap = computed<Record<string, Pick<WorkspaceOnboardingCheckl
           cta_label: 'Open roadmap',
         },
         invite_team: {
-          title: 'Invite the first collaborators',
+          title: 'Invite collaborators',
           description: 'Turn this from a personal space into a collaborative workspace.',
           cta_label: authStore.canManageMembers ? 'Manage members' : 'View workspace',
         },
         seed_notes: {
-          title: 'Capture the first notes',
+          title: 'Capture key notes',
           description: 'Save methods, findings, and decisions so they can be reused later.',
           cta_label: 'Open notes',
         },
@@ -175,12 +175,12 @@ const suggestedNextMove = computed(() => {
     return localeStore.isChinese ? '先把路线图主线画出来。' : 'Draw the main roadmap path first.'
   }
   if (metrics.value.notes_total < Math.min(metrics.value.roadmap_total, 3)) {
-    return localeStore.isChinese ? '把正在推进的节点对应笔记补齐。' : 'Capture notes for the active roadmap nodes.'
+    return localeStore.isChinese ? '把正在推进节点对应的笔记补齐。' : 'Capture notes for the active roadmap nodes.'
   }
   if (metrics.value.members_total <= 1) {
     return localeStore.isChinese ? '邀请协作者加入，一起推进。' : 'Invite collaborators so the work can move together.'
   }
-  return localeStore.isChinese ? '路线和记录都在形成，继续稳定推进。' : 'The path and knowledge base are forming. Keep it moving.'
+  return localeStore.isChinese ? '路线和笔记都在形成，继续稳定推进。' : 'The path and knowledge base are forming. Keep it moving.'
 })
 
 const fetchOverview = async () => {
@@ -233,7 +233,7 @@ watch(
     </div>
 
     <template v-else>
-      <header class="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_320px] xl:items-end">
+      <header class="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_300px] xl:items-end">
         <div>
           <div class="admin-kicker">{{ copy.kicker }}</div>
           <h1 class="admin-headline mt-3">{{ workspaceName }}</h1>
@@ -252,7 +252,7 @@ watch(
         <article class="admin-card p-6">
           <div class="admin-kpi-label">{{ copy.role }}</div>
           <div class="mt-3 text-3xl font-bold tracking-[-0.05em] text-[var(--ink-strong)]">{{ currentRole }}</div>
-          <div class="mt-5 text-sm font-semibold text-[var(--ink-main)]">{{ suggestedNextMove }}</div>
+          <div class="mt-4 text-sm leading-7 text-[var(--ink-soft)]">{{ suggestedNextMove }}</div>
         </article>
       </header>
 
@@ -275,7 +275,7 @@ watch(
         </article>
       </section>
 
-      <section class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_360px]">
+      <section class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_340px]">
         <article class="admin-card p-6">
           <div class="admin-card-title">{{ copy.focusTitle }}</div>
 
@@ -324,7 +324,7 @@ watch(
         </article>
       </section>
 
-      <section class="mt-6 grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+      <section class="mt-6 grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
         <article class="admin-card p-6">
           <div class="admin-card-title">{{ copy.teamTitle }}</div>
           <div class="mt-5 grid gap-3">

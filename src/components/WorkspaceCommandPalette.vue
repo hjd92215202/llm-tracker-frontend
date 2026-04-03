@@ -33,7 +33,7 @@ const copy = computed(() =>
         placeholder: '输入节点标题、笔记标题、方法或结论',
         helper: '按 Esc 关闭',
         loading: '正在搜索...',
-        empty: '输入关键词后，这里会出现结果',
+        empty: '输入关键词开始搜索',
         noResults: '没有找到匹配内容',
         roadmap: '路线图',
         notes: '笔记',
@@ -121,8 +121,7 @@ watch(
     if (isOpen) {
       document.body.style.overflow = 'hidden'
       setTimeout(() => {
-        const element = document.getElementById('workspace-command-input')
-        element?.focus()
+        document.getElementById('workspace-command-input')?.focus()
       }, 40)
       runSearch()
       return
