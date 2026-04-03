@@ -29,6 +29,10 @@ const artifactForm = ref({
 
 const noteId = computed(() => (route.params.id ? Number(route.params.id) : null))
 const isEditMode = computed(() => Boolean(noteId.value))
+const presetNodeId = computed(() => {
+  const value = Number(route.query.nodeId)
+  return Number.isFinite(value) && value > 0 ? value : null
+})
 const hasWriteAccess = computed(() => authStore.hasWriteAccess)
 const currentWorkspace = computed(() => authStore.activeWorkspace)
 const currentRole = computed<WorkspaceRole>(() => (authStore.activeRole ?? 'viewer') as WorkspaceRole)
@@ -197,7 +201,12 @@ const loadEditorData = async () => {
       artifacts.value = data.artifacts
     } else {
       artifacts.value = []
-      form.value = { title: '', node_id: nodes.value[0]?.id ?? null, content: '', tags: '' }
+      const defaultNodeId =
+        presetNodeId.value && nodes.value.some((node) => node.id === presetNodeId.value)
+          ? presetNodeId.value
+          : nodes.value[0]?.id ?? null
+
+      form.value = { title: '', node_id: defaultNodeId, content: '', tags: '' }
     }
   } catch (error: any) {
     errorMessage.value = error.message || copy.value.loadError

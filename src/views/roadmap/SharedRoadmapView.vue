@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { VueFlow } from '@vue-flow/core'
@@ -28,20 +28,21 @@ const token = computed(() => String(route.params.token || ''))
 const copy = computed(() =>
   localeStore.isChinese
     ? {
-        title: '路线图',
-        summary: '点击节点，向下看对应笔记。',
+        title: '公开路线图',
+        summary: '先看完整路径，再点节点继续往下看公开笔记。',
         loading: '正在加载路线图...',
         notesLoading: '正在加载笔记...',
-        loadError: '分享页面已失效或不存在',
-        notesTitle: '相关笔记',
+        loadError: '这个分享页面已失效或不存在。',
+        notesTitle: '公开笔记',
         noNotes: '这个节点下还没有公开笔记。',
         noDescription: '这个节点还没有补充说明。',
-        notePreview: '点击一条笔记查看完整内容',
-        emptyHint: '点击上方节点后，相关笔记会显示在这里。',
+        notePreview: '点一条笔记，直接查看完整内容。',
+        emptyHint: '先点上方节点，再往下看具体内容。',
         noteContentTitle: '笔记内容',
-        registerTitle: '想把你的工作也整理成这样？',
-        registerAction: '注册开始',
-        loginAction: '登录继续',
+        registerTitle: '把你的项目路径也整理成一张清晰路线图',
+        registerSummary: '目标、节点、笔记放在一起，别人一眼就能看懂你在推进什么。',
+        registerAction: '免费开始',
+        loginAction: '登录',
         theory: '理论',
         coding: '编码',
         project: '项目',
@@ -50,18 +51,19 @@ const copy = computed(() =>
         completed: '已完成',
       }
     : {
-        title: 'Roadmap',
-        summary: 'Click a node and scroll down to view the related notes.',
+        title: 'Shared roadmap',
+        summary: 'See the full path first, then click a node and continue into the public notes.',
         loading: 'Loading roadmap...',
         notesLoading: 'Loading notes...',
-        loadError: 'This shared page is no longer available',
-        notesTitle: 'Related notes',
+        loadError: 'This shared page is no longer available.',
+        notesTitle: 'Public notes',
         noNotes: 'There are no public notes under this node yet.',
         noDescription: 'No description yet.',
-        notePreview: 'Click a note to view the full content',
-        emptyHint: 'Click a node above and the related notes will appear here.',
+        notePreview: 'Click a note to view the full content.',
+        emptyHint: 'Click a node above and continue into the details below.',
         noteContentTitle: 'Note content',
-        registerTitle: 'Want to organize your work like this?',
+        registerTitle: 'Turn your own work into a clear roadmap',
+        registerSummary: 'Keep goals, nodes, and notes on one visible path.',
         registerAction: 'Start free',
         loginAction: 'Sign in',
         theory: 'Theory',
@@ -82,7 +84,7 @@ const flowNodes = computed(() =>
       x: node.node_type === 'theory' ? 80 : node.node_type === 'coding' ? 340 : 600,
       y: node.sort_order * 176 + 56,
     },
-    class: `share-node share-node-${node.status}`,
+    class: `share-node share-node-${node.status} ${selectedNode.value?.id === node.id ? 'share-node-selected' : ''}`,
   }))
 )
 
@@ -165,18 +167,20 @@ onMounted(() => {
 <template>
   <div class="min-h-screen bg-[linear-gradient(180deg,#fafaf8_0%,#f4f6f8_100%)] px-3 py-3 md:px-4 md:py-4">
     <section class="relative overflow-hidden rounded-[32px] border border-[rgba(15,23,42,0.06)] bg-white">
-      <div class="flex flex-col gap-4 border-b border-[rgba(15,23,42,0.06)] px-5 py-4 md:flex-row md:items-center md:justify-between md:px-6">
+      <div class="shared-hero">
         <div class="min-w-0">
-          <div class="truncate text-xs font-semibold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
+          <div class="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
             {{ roadmap?.workspace_name || copy.title }}
           </div>
-          <div class="mt-2 flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
-            <h1 class="text-2xl font-black tracking-[-0.05em] text-[var(--ink-strong)] md:text-3xl">{{ copy.title }}</h1>
-            <p class="text-sm text-[var(--ink-soft)] md:text-base">{{ copy.summary }}</p>
-          </div>
+          <h1 class="mt-3 text-[2rem] font-black tracking-[-0.06em] text-[var(--ink-strong)] md:text-[2.5rem]">
+            {{ copy.title }}
+          </h1>
+          <p class="mt-4 max-w-3xl text-sm leading-7 text-[var(--ink-soft)] md:text-base">
+            {{ copy.summary }}
+          </p>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="shared-actions">
           <button class="product-button-secondary !px-4 !py-2.5" type="button" @click="router.push('/login')">
             {{ copy.loginAction }}
           </button>
@@ -186,7 +190,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <div class="share-canvas-shell">
+      <div class="shared-canvas-shell">
         <div v-if="loading" class="admin-empty !border-none !bg-transparent !p-0">{{ copy.loading }}</div>
 
         <VueFlow
@@ -229,14 +233,14 @@ onMounted(() => {
         <div class="mt-8 text-sm font-semibold text-[var(--ink-main)]">{{ copy.notesTitle }}</div>
 
         <div v-if="loadingNotes" class="admin-empty mt-4">{{ copy.notesLoading }}</div>
-        <div v-else-if="notes.length > 0" class="mt-4 grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
+        <div v-else-if="notes.length > 0" class="mt-4 grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
           <div class="space-y-3">
             <button
               v-for="note in notes"
               :key="note.id"
               type="button"
               class="admin-list-card block w-full text-left"
-              :class="selectedNote?.id === note.id ? 'border-[rgba(15,23,42,0.16)]' : ''"
+              :class="selectedNote?.id === note.id ? 'border-[rgba(229,106,43,0.24)] bg-[rgba(255,250,242,0.92)]' : ''"
               @click="selectedNoteId = note.id"
             >
               <div class="text-base font-semibold text-[var(--ink-strong)]">{{ note.title }}</div>
@@ -247,7 +251,8 @@ onMounted(() => {
           <article v-if="selectedNote" class="rounded-[24px] border border-[rgba(15,23,42,0.08)] bg-[rgba(247,247,245,0.88)] p-6">
             <div class="text-sm font-semibold text-[var(--ink-soft)]">{{ copy.noteContentTitle }}</div>
             <div class="mt-3 text-2xl font-bold tracking-[-0.04em] text-[var(--ink-strong)]">{{ selectedNote.title }}</div>
-            <p class="mt-4 whitespace-pre-wrap text-sm leading-8 text-[var(--ink-main)]">{{ selectedNote.content }}</p>
+            <p class="mt-3 text-sm font-semibold text-[var(--brand-deep)]">{{ copy.notePreview }}</p>
+            <p class="mt-5 whitespace-pre-wrap text-sm leading-8 text-[var(--ink-main)]">{{ selectedNote.content }}</p>
           </article>
         </div>
         <div v-else class="admin-empty mt-4">{{ copy.noNotes }}</div>
@@ -258,7 +263,10 @@ onMounted(() => {
 
     <section class="mx-auto mt-4 max-w-6xl rounded-[28px] border border-[rgba(15,23,42,0.06)] bg-[var(--surface-dark)] px-6 py-6 text-white md:px-8">
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div class="text-2xl font-bold tracking-[-0.04em]">{{ copy.registerTitle }}</div>
+        <div class="max-w-3xl">
+          <div class="text-2xl font-bold tracking-[-0.04em]">{{ copy.registerTitle }}</div>
+          <p class="mt-3 text-sm leading-7 text-[rgba(255,255,255,0.68)]">{{ copy.registerSummary }}</p>
+        </div>
         <button class="product-button-primary" type="button" @click="router.push('/register')">
           {{ copy.registerAction }}
         </button>
@@ -268,9 +276,23 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.share-canvas-shell {
-  height: calc(100vh - 170px);
-  min-height: 640px;
+.shared-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  padding: 20px;
+}
+
+.shared-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.shared-canvas-shell {
+  height: calc(100vh - 188px);
+  min-height: 620px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 247, 245, 0.94));
 }
 
@@ -287,6 +309,11 @@ onMounted(() => {
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
 }
 
+:deep(.share-node-selected) {
+  border-color: rgba(229, 106, 43, 0.4);
+  box-shadow: 0 0 0 5px rgba(229, 106, 43, 0.08), 0 16px 28px rgba(15, 23, 42, 0.08);
+}
+
 :deep(.share-node-in_progress) {
   border-color: rgba(15, 23, 42, 0.36);
   box-shadow: 0 0 0 6px rgba(15, 23, 42, 0.04), 0 14px 30px rgba(15, 23, 42, 0.08);
@@ -295,5 +322,14 @@ onMounted(() => {
 :deep(.share-node-completed) {
   border-color: rgba(21, 128, 61, 0.2);
   background: rgba(248, 255, 251, 0.98);
+}
+
+@media (min-width: 768px) {
+  .shared-hero {
+    flex-direction: row;
+    align-items: end;
+    justify-content: space-between;
+    padding: 24px;
+  }
 }
 </style>
