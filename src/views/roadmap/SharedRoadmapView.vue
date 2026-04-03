@@ -19,7 +19,7 @@ const localeStore = useLocaleStore()
 const roadmap = ref<WorkspaceSharedRoadmap | null>(null)
 const notes = ref<WorkspaceSharedNote[]>([])
 const selectedNode = ref<RoadmapNode | null>(null)
-const notesSectionRef = ref<HTMLElement | null>(null)
+const pageScrollRef = ref<HTMLElement | null>(null)
 const showFloatingTop = ref(false)
 const loading = ref(true)
 const loadingNotes = ref(false)
@@ -129,7 +129,7 @@ const loadRoadmap = async () => {
     if (preset) {
       const targetNode = roadmap.value.nodes.find((node) => node.id === preset)
       if (targetNode) {
-        await loadNotes(targetNode)
+        await loadNotes(targetNode, { autoScroll: false })
       }
     }
   } catch (error: any) {
@@ -141,25 +141,28 @@ const loadRoadmap = async () => {
 }
 
 const updateFloatingTopVisibility = () => {
-  if (!selectedNode.value || !notesSectionRef.value) {
+  if (!selectedNode.value || !pageScrollRef.value) {
     showFloatingTop.value = false
     return
   }
 
-  const rect = notesSectionRef.value.getBoundingClientRect()
-  showFloatingTop.value = rect.top <= window.innerHeight * 0.55
+  const currentScroll = pageScrollRef.value.scrollTop
+  const threshold = Math.max(220, pageScrollRef.value.clientHeight * 0.35)
+  showFloatingTop.value = currentScroll >= threshold
 }
 
-const loadNotes = async (node: RoadmapNode) => {
+const loadNotes = async (node: RoadmapNode, options?: { autoScroll?: boolean }) => {
   selectedNode.value = node
   loadingNotes.value = true
 
   try {
     const response = await workspaceApi.getSharedNodeNotes(token.value, node.id)
     notes.value = response.notes
-    setTimeout(() => {
-      document.getElementById('shared-roadmap-notes')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 80)
+    if (options?.autoScroll) {
+      setTimeout(() => {
+        document.getElementById('shared-roadmap-notes')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 80)
+    }
   } catch {
     notes.value = []
   } finally {
@@ -169,7 +172,7 @@ const loadNotes = async (node: RoadmapNode) => {
 }
 
 const handleNodeClick = async (payload: { node: { data: RoadmapNode } }) => {
-  await loadNotes(payload.node.data)
+  await loadNotes(payload.node.data, { autoScroll: true })
 }
 
 const openNote = (noteId: number) => {
@@ -180,22 +183,26 @@ const openNote = (noteId: number) => {
 }
 
 const scrollToTop = () => {
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+  pageScrollRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 onMounted(() => {
-  window.addEventListener('scroll', updateFloatingTopVisibility, { passive: true })
+  pageScrollRef.value?.addEventListener('scroll', updateFloatingTopVisibility, { passive: true })
+  updateFloatingTopVisibility()
   loadRoadmap()
 })
 
 onUnmounted(() => {
-  window.removeEventListener('scroll', updateFloatingTopVisibility)
+  pageScrollRef.value?.removeEventListener('scroll', updateFloatingTopVisibility)
 })
 </script>
 
 <template>
-  <div class="min-h-screen bg-[linear-gradient(180deg,#fafaf8_0%,#f4f6f8_100%)] px-3 py-3 md:px-4 md:py-4">
-    <section class="relative overflow-hidden rounded-[32px] border border-[rgba(15,23,42,0.06)] bg-white">
+  <div
+    ref="pageScrollRef"
+    class="shared-page-scroll h-screen overflow-y-auto bg-[linear-gradient(180deg,#fafaf8_0%,#f4f6f8_100%)] px-3 py-3 md:px-4 md:py-4"
+  >
+    <section class="shared-main-shell relative overflow-hidden rounded-[32px] border border-[rgba(15,23,42,0.06)] bg-white">
       <div class="shared-hero">
         <div class="min-w-0">
           <div class="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
@@ -227,7 +234,8 @@ onUnmounted(() => {
           class="h-full w-full bg-transparent"
           :nodes="flowNodes"
           :edges="flowEdges"
-          :default-viewport="{ x: 0, y: 0, zoom: 0.82 }"
+          fit-view-on-init
+          :fit-view-on-init-options="{ padding: 0.42, minZoom: 0.48, maxZoom: 1.1, duration: 360 }"
           :min-zoom="0.48"
           :max-zoom="1.3"
           :nodes-draggable="false"
@@ -249,63 +257,59 @@ onUnmounted(() => {
     </div>
 
     <section
+      v-if="selectedNode"
       id="shared-roadmap-notes"
-      ref="notesSectionRef"
       class="mx-auto mt-4 max-w-6xl rounded-[32px] border border-[rgba(15,23,42,0.06)] bg-white px-6 py-6 md:px-8"
     >
-      <template v-if="selectedNode">
-        <div class="shared-notes-layout">
-          <div class="min-w-0">
-            <div class="flex flex-wrap gap-2">
-              <span class="admin-chip-warm">{{ typeLabel(selectedNode.node_type) }}</span>
-              <span :class="selectedNode.status === 'completed' ? 'admin-chip-green' : selectedNode.status === 'in_progress' ? 'admin-chip-blue' : 'admin-chip'">
-                {{ statusLabel(selectedNode.status) }}
-              </span>
-            </div>
-
-            <h2 class="mt-4 text-3xl font-bold tracking-[-0.04em] text-[var(--ink-strong)]">{{ selectedNode.title }}</h2>
-            <p class="mt-3 max-w-3xl text-base leading-8 text-[var(--ink-soft)]">{{ selectedNode.description || copy.noDescription }}</p>
-
-            <div class="mt-8 text-sm font-semibold text-[var(--ink-main)]">{{ copy.notesTitle }}</div>
-
-            <div v-if="loadingNotes" class="admin-empty mt-4">{{ copy.notesLoading }}</div>
-            <div v-else-if="notes.length > 0" class="shared-note-list mt-4">
-              <button
-                v-for="note in notes"
-                :key="note.id"
-                type="button"
-                class="shared-note-list-item"
-                @click="openNote(note.id)"
-              >
-                <div class="shared-note-list-main">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <span class="admin-chip-warm">{{ typeLabel(selectedNode.node_type) }}</span>
-                    <span class="admin-chip">{{ new Date(note.created_at).toLocaleDateString(localeStore.locale) }}</span>
-                  </div>
-                  <div class="mt-4 text-xl font-semibold tracking-[-0.03em] text-[var(--ink-strong)]">{{ note.title }}</div>
-                  <div v-if="note.tags?.length" class="mt-4 flex flex-wrap gap-2">
-                    <span
-                      v-for="tag in note.tags.slice(0, 4)"
-                      :key="tag"
-                      class="rounded-full bg-[rgba(15,23,42,0.05)] px-3 py-1 text-[11px] font-bold text-[var(--ink-main)]"
-                    >
-                      #{{ tag }}
-                    </span>
-                  </div>
-                </div>
-
-                <div class="shared-note-list-side">
-                  <div class="shared-note-list-count">{{ new Date(note.created_at).toLocaleDateString(localeStore.locale) }}</div>
-                  <div class="shared-note-list-link">{{ copy.openNote }}</div>
-                </div>
-              </button>
-            </div>
-            <div v-else class="admin-empty mt-4">{{ copy.noNotes }}</div>
+      <div class="shared-notes-layout">
+        <div class="min-w-0">
+          <div class="flex flex-wrap gap-2">
+            <span class="admin-chip-warm">{{ typeLabel(selectedNode.node_type) }}</span>
+            <span :class="selectedNode.status === 'completed' ? 'admin-chip-green' : selectedNode.status === 'in_progress' ? 'admin-chip-blue' : 'admin-chip'">
+              {{ statusLabel(selectedNode.status) }}
+            </span>
           </div>
-        </div>
-      </template>
 
-      <div v-else class="admin-empty">{{ copy.emptyHint }}</div>
+          <h2 class="mt-4 text-3xl font-bold tracking-[-0.04em] text-[var(--ink-strong)]">{{ selectedNode.title }}</h2>
+          <p class="mt-3 max-w-3xl text-base leading-8 text-[var(--ink-soft)]">{{ selectedNode.description || copy.noDescription }}</p>
+
+          <div class="mt-8 text-sm font-semibold text-[var(--ink-main)]">{{ copy.notesTitle }}</div>
+
+          <div v-if="loadingNotes" class="admin-empty mt-4">{{ copy.notesLoading }}</div>
+          <div v-else-if="notes.length > 0" class="shared-note-list mt-4">
+            <button
+              v-for="note in notes"
+              :key="note.id"
+              type="button"
+              class="shared-note-list-item"
+              @click="openNote(note.id)"
+            >
+              <div class="shared-note-list-main">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="admin-chip-warm">{{ typeLabel(selectedNode.node_type) }}</span>
+                  <span class="admin-chip">{{ new Date(note.created_at).toLocaleDateString(localeStore.locale) }}</span>
+                </div>
+                <div class="mt-4 text-xl font-semibold tracking-[-0.03em] text-[var(--ink-strong)]">{{ note.title }}</div>
+                <div v-if="note.tags?.length" class="mt-4 flex flex-wrap gap-2">
+                  <span
+                    v-for="tag in note.tags.slice(0, 4)"
+                    :key="tag"
+                    class="rounded-full bg-[rgba(15,23,42,0.05)] px-3 py-1 text-[11px] font-bold text-[var(--ink-main)]"
+                  >
+                    #{{ tag }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="shared-note-list-side">
+                <div class="shared-note-list-count">{{ new Date(note.created_at).toLocaleDateString(localeStore.locale) }}</div>
+                <div class="shared-note-list-link">{{ copy.openNote }}</div>
+              </div>
+            </button>
+          </div>
+          <div v-else class="admin-empty mt-4">{{ copy.noNotes }}</div>
+        </div>
+      </div>
     </section>
 
     <button
@@ -321,6 +325,27 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+:global(body) {
+  overflow: hidden;
+}
+
+.shared-page-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.shared-page-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.shared-main-shell {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 24px);
+}
+
 .shared-hero {
   display: flex;
   flex-direction: column;
@@ -337,8 +362,8 @@ onUnmounted(() => {
 
 .shared-canvas-shell {
   position: relative;
-  height: calc(100vh - 188px);
-  min-height: 620px;
+  flex: 1;
+  min-height: 420px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 247, 245, 0.94));
 }
 
@@ -470,6 +495,10 @@ onUnmounted(() => {
 }
 
 @media (min-width: 768px) {
+  .shared-main-shell {
+    height: calc(100vh - 32px);
+  }
+
   .shared-hero {
     flex-direction: row;
     align-items: end;

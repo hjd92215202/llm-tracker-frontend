@@ -225,8 +225,10 @@ watch(
 </script>
 
 <template>
-  <div class="min-h-screen bg-[linear-gradient(180deg,#fafaf8_0%,#f4f6f8_100%)] px-3 py-3 md:px-4 md:py-4">
-    <section class="relative overflow-hidden rounded-[32px] border border-[rgba(15,23,42,0.06)] bg-white">
+  <div
+    class="roadmap-page-scroll h-screen overflow-y-auto bg-[linear-gradient(180deg,#fafaf8_0%,#f4f6f8_100%)] px-3 py-3 md:px-4 md:py-4"
+  >
+    <section class="roadmap-main-shell relative overflow-hidden rounded-[32px] border border-[rgba(15,23,42,0.06)] bg-white">
       <div class="roadmap-hero">
         <div class="min-w-0">
           <div class="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
@@ -313,7 +315,8 @@ watch(
           class="h-full w-full bg-transparent"
           :nodes="flowNodes"
           :edges="flowEdges"
-          :default-viewport="{ x: 0, y: 0, zoom: 0.82 }"
+          fit-view-on-init
+          :fit-view-on-init-options="{ padding: 0.42, minZoom: 0.48, maxZoom: 1.1, duration: 360 }"
           :min-zoom="0.48"
           :max-zoom="1.3"
           :nodes-draggable="false"
@@ -402,6 +405,27 @@ watch(
 </template>
 
 <style scoped>
+:global(body) {
+  overflow: hidden;
+}
+
+.roadmap-page-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.roadmap-page-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.roadmap-main-shell {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 24px);
+}
+
 .roadmap-hero {
   display: flex;
   flex-direction: column;
@@ -453,8 +477,8 @@ watch(
 
 .roadmap-canvas-shell {
   position: relative;
-  height: calc(100vh - 198px);
-  min-height: 620px;
+  flex: 1;
+  min-height: 420px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 247, 245, 0.94));
 }
 
@@ -539,6 +563,10 @@ watch(
 }
 
 @media (min-width: 768px) {
+  .roadmap-main-shell {
+    height: calc(100vh - 32px);
+  }
+
   .roadmap-hero {
     flex-direction: row;
     align-items: end;
