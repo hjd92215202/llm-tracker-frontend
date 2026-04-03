@@ -27,26 +27,19 @@ const copy = computed(() =>
   localeStore.isChinese
     ? {
         eyebrow: '笔记',
-        title: '把研究与过程记录整理成清楚的知识资产',
+        title: '把方法、结论和过程留在节点下面',
         summaryPrefix: '这些笔记属于',
-        summarySuffix: '空间，用来保存研究结论、过程记录和关键决策。',
+        summarySuffix: '空间，用来承接路线图下的实际内容。',
         writable: '可编辑',
         readonly: '只读',
         newNote: '新建笔记',
-        readonlyHint: '你当前可以查看和搜索笔记，但只有所有者、管理员和成员可以创建或修改。',
-        filtersTitle: '搜索与筛选',
+        readonlyHint: '你可以查看笔记，但只有所有者、管理员和成员可以创建或修改。',
+        filtersTitle: '筛选',
         searchPlaceholder: '搜索标题、摘要或正文内容',
         allNodes: '全部节点',
-        linkedNode: '关联节点',
-        resultCount: '结果数',
-        published: '创建时间',
-        titleAndSummary: '标题与摘要',
-        action: '操作',
-        open: '查看',
-        edit: '编辑',
-        delete: '删除',
-        noSummary: '暂无摘要',
-        noResults: '当前筛选条件下没有匹配的笔记。',
+        resultCount: '当前结果',
+        noSummary: '还没有摘要',
+        noResults: '当前条件下还没有匹配笔记。',
         loading: '正在加载笔记...',
         deleteTitle: '确认删除这条笔记吗？',
         deleteBodyPrefix: '删除后，',
@@ -56,29 +49,25 @@ const copy = computed(() =>
         deleteError: '删除笔记失败',
         loadError: '加载笔记失败',
         workspaceFallback: '当前空间',
-        generalNode: '通用',
+        generalNode: '通用记录',
         unknownNode: '未知节点',
+        open: '查看',
+        edit: '编辑',
+        delete: '删除',
       }
     : {
         eyebrow: 'Notes',
-        title: 'Turn research and working records into clearer knowledge assets',
+        title: 'Keep methods, findings, and records under the right nodes',
         summaryPrefix: 'These notes belong to',
-        summarySuffix: 'workspace and capture research outcomes, process, and key decisions.',
+        summarySuffix: 'workspace and hold the real content behind the roadmap.',
         writable: 'Editable',
         readonly: 'Read only',
         newNote: 'New note',
-        readonlyHint: 'You can review and search notes, but only owners, admins, and members can create or update them.',
-        filtersTitle: 'Search and filters',
-        searchPlaceholder: 'Search titles, summaries, or content',
+        readonlyHint: 'You can review notes, but only owners, admins, and members can create or update them.',
+        filtersTitle: 'Filters',
+        searchPlaceholder: 'Search title, summary, or content',
         allNodes: 'All nodes',
-        linkedNode: 'Linked node',
         resultCount: 'Results',
-        published: 'Created',
-        titleAndSummary: 'Title and summary',
-        action: 'Action',
-        open: 'Open',
-        edit: 'Edit',
-        delete: 'Delete',
         noSummary: 'No summary yet',
         noResults: 'No notes match the current filters.',
         loading: 'Loading notes...',
@@ -92,6 +81,9 @@ const copy = computed(() =>
         workspaceFallback: 'Workspace',
         generalNode: 'General',
         unknownNode: 'Unknown node',
+        open: 'Open',
+        edit: 'Edit',
+        delete: 'Delete',
       }
 )
 
@@ -212,46 +204,49 @@ const confirmDelete = async () => {
 </script>
 
 <template>
-  <div class="mx-auto max-w-7xl px-6 py-8 lg:px-10">
-    <header class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+  <div class="admin-page">
+    <header class="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
       <div class="max-w-3xl">
-        <div class="product-eyebrow border border-[rgba(37,99,235,0.14)] bg-white/80 text-[var(--accent)]">
-          <span class="h-2.5 w-2.5 rounded-full bg-[var(--accent)]"></span>
-          {{ copy.eyebrow }}
-        </div>
-        <h1 class="product-title mt-7 text-4xl leading-[0.96] md:text-6xl">{{ copy.title }}</h1>
-        <p class="mt-5 text-base leading-8 text-[var(--ink-soft)]">
+        <div class="admin-kicker">{{ copy.eyebrow }}</div>
+        <h1 class="admin-headline mt-3">{{ copy.title }}</h1>
+        <p class="admin-subtitle mt-5">
           {{ copy.summaryPrefix }}
-          <span class="font-black text-[var(--ink-strong)]">{{ currentWorkspaceName }}</span>
+          <span class="font-semibold text-[var(--ink-strong)]">{{ currentWorkspaceName }}</span>
           {{ copy.summarySuffix }}
         </p>
       </div>
 
       <div class="flex flex-wrap items-center gap-3">
-        <div class="pill">{{ hasWriteAccess ? copy.writable : copy.readonly }}</div>
-        <button v-if="hasWriteAccess" class="product-button-primary" type="button" @click="createNote">
+        <span :class="hasWriteAccess ? 'admin-chip-dark' : 'admin-chip'">
+          {{ hasWriteAccess ? copy.writable : copy.readonly }}
+        </span>
+        <button v-if="hasWriteAccess" class="product-button-dark" type="button" @click="createNote">
           {{ copy.newNote }}
         </button>
       </div>
     </header>
 
-    <div v-if="!hasWriteAccess" class="banner mt-8">
+    <div v-if="!hasWriteAccess" class="mt-5 rounded-[18px] bg-[rgba(229,106,43,0.08)] px-5 py-4 text-sm font-semibold text-[var(--brand-deep)]">
       {{ copy.readonlyHint }}
     </div>
 
-    <div v-if="errorMessage" class="product-error mt-4 px-5 py-4 text-sm font-semibold">
+    <div v-if="errorMessage" class="product-error mt-5 px-5 py-4 text-sm font-semibold">
       {{ errorMessage }}
     </div>
 
-    <section class="toolbar mt-8">
-      <div class="toolbar-head">
-        <div class="toolbar-title">{{ copy.filtersTitle }}</div>
-        <div class="scope-pill">{{ copy.resultCount }} {{ notes.length }}</div>
+    <section class="admin-card mt-6 p-5">
+      <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div class="text-sm font-semibold text-[var(--ink-main)]">
+          {{ copy.filtersTitle }}
+        </div>
+        <div class="admin-chip">
+          {{ copy.resultCount }} {{ notes.length }}
+        </div>
       </div>
 
-      <div class="toolbar-grid">
-        <input v-model="searchTerm" type="text" class="product-input" :placeholder="copy.searchPlaceholder" />
-        <select v-model="selectedNodeId" class="product-input">
+      <div class="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_240px]">
+        <input v-model="searchTerm" type="text" class="admin-input" :placeholder="copy.searchPlaceholder" />
+        <select v-model="selectedNodeId" class="admin-select">
           <option value="all">{{ copy.allNodes }}</option>
           <option v-for="node in nodes" :key="node.id" :value="String(node.id)">
             {{ node.title }}
@@ -260,54 +255,37 @@ const confirmDelete = async () => {
       </div>
     </section>
 
-    <section class="table-shell mt-8">
-      <table class="w-full border-collapse">
-        <thead class="table-head">
-          <tr>
-            <th class="px-5 py-4">{{ copy.published }}</th>
-            <th class="px-5 py-4">{{ copy.titleAndSummary }}</th>
-            <th class="px-5 py-4">{{ copy.linkedNode }}</th>
-            <th class="px-5 py-4 text-right">{{ copy.action }}</th>
-          </tr>
-        </thead>
+    <div v-if="loading" class="admin-empty mt-6">
+      {{ copy.loading }}
+    </div>
 
-        <tbody v-if="!loading" class="divide-y divide-[rgba(20,33,43,0.08)]">
-          <tr v-for="note in notes" :key="note.id" class="row">
-            <td class="px-5 py-5 text-sm font-semibold text-[var(--ink-soft)]">
-              {{ new Date(note.created_at).toLocaleDateString(localeStore.locale) }}
-            </td>
-            <td class="px-5 py-5">
-              <div class="font-black text-[var(--ink-strong)]">{{ note.title }}</div>
-              <div class="mt-1 text-sm leading-7 text-[var(--ink-soft)]">{{ note.summary || copy.noSummary }}</div>
-            </td>
-            <td class="px-5 py-5">
-              <span class="pill pill-brand">{{ getNodeTitle(note.node_id) }}</span>
-            </td>
-            <td class="px-5 py-5 text-right">
-              <div class="inline-flex items-center gap-4">
-                <button class="secondary-link" type="button" @click="openNote(note.id)">{{ copy.open }}</button>
-                <button v-if="hasWriteAccess" class="primary-link" type="button" @click="editNote(note.id)">
-                  {{ copy.edit }}
-                </button>
-                <button v-if="hasWriteAccess" class="danger-link" type="button" @click="triggerDelete(note)">
-                  {{ copy.delete }}
-                </button>
-              </div>
-            </td>
-          </tr>
+    <section v-else-if="notes.length > 0" class="mt-6 grid gap-4 xl:grid-cols-2">
+      <article v-for="note in notes" :key="note.id" class="admin-card p-5">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap gap-2">
+            <span class="admin-chip-warm">{{ getNodeTitle(note.node_id) }}</span>
+            <span class="admin-chip">{{ new Date(note.created_at).toLocaleDateString(localeStore.locale) }}</span>
+          </div>
 
-          <tr v-if="notes.length === 0">
-            <td colspan="4" class="empty-card">
-              {{ copy.noResults }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+          <div class="flex items-center gap-4">
+            <button class="text-sm font-semibold text-[var(--ink-main)]" type="button" @click="openNote(note.id)">{{ copy.open }}</button>
+            <button v-if="hasWriteAccess" class="text-sm font-semibold text-[var(--ink-strong)]" type="button" @click="editNote(note.id)">
+              {{ copy.edit }}
+            </button>
+            <button v-if="hasWriteAccess" class="text-sm font-semibold text-[var(--danger)]" type="button" @click="triggerDelete(note)">
+              {{ copy.delete }}
+            </button>
+          </div>
+        </div>
 
-      <div v-if="loading" class="empty-card">
-        {{ copy.loading }}
-      </div>
+        <div class="mt-4 text-xl font-semibold tracking-[-0.03em] text-[var(--ink-strong)]">{{ note.title }}</div>
+        <p class="mt-3 text-sm leading-7 text-[var(--ink-soft)]">{{ note.summary || copy.noSummary }}</p>
+      </article>
     </section>
+
+    <div v-else class="admin-empty mt-6">
+      {{ copy.noResults }}
+    </div>
 
     <Teleport to="body">
       <Transition name="modal">
@@ -332,100 +310,3 @@ const confirmDelete = async () => {
     </Teleport>
   </div>
 </template>
-
-<style lang="postcss" scoped>
-@reference "@/style.css";
-
-.toolbar {
-  @apply rounded-[2rem] border border-[rgba(20,33,43,0.08)] bg-[rgba(255,251,245,0.8)] p-5 shadow-[0_14px_36px_rgba(20,33,43,0.04)];
-}
-
-.toolbar-head {
-  @apply flex items-center justify-between gap-4;
-}
-
-.toolbar-title {
-  @apply text-sm font-bold text-[var(--accent)];
-}
-
-.toolbar-grid {
-  @apply mt-5 grid gap-4 lg:grid-cols-[1.2fr_0.8fr];
-}
-
-.scope-pill {
-  @apply inline-flex rounded-full bg-[rgba(20,33,43,0.06)] px-4 py-2 text-sm font-semibold text-[var(--ink-main)];
-}
-
-.table-shell {
-  @apply overflow-hidden rounded-[2rem] border border-[rgba(20,33,43,0.08)] bg-[rgba(255,255,255,0.72)] shadow-[0_18px_50px_rgba(20,33,43,0.05)];
-}
-
-.table-head {
-  @apply bg-[rgba(20,33,43,0.04)] text-left text-sm font-semibold text-[var(--ink-soft)];
-}
-
-.row {
-  @apply transition-colors hover:bg-[rgba(255,250,242,0.68)];
-}
-
-.pill {
-  @apply inline-flex rounded-full bg-[rgba(20,33,43,0.06)] px-3 py-1 text-sm font-semibold text-[var(--ink-main)];
-}
-
-.pill-brand {
-  @apply bg-[rgba(37,99,235,0.12)] text-[var(--accent)];
-}
-
-.secondary-link {
-  @apply text-sm font-semibold text-[var(--ink-soft)] transition-all hover:text-[var(--ink-strong)];
-}
-
-.primary-link {
-  @apply text-sm font-semibold text-[var(--accent)] transition-all hover:opacity-70;
-}
-
-.danger-link {
-  @apply text-sm font-semibold text-[var(--danger)] transition-all hover:opacity-70;
-}
-
-.banner {
-  @apply rounded-[1.6rem] bg-[rgba(229,106,43,0.08)] px-5 py-4 text-sm font-semibold text-[var(--brand-deep)];
-}
-
-.empty-card {
-  @apply px-6 py-16 text-center text-sm font-semibold text-[var(--ink-soft)];
-}
-
-.modal-panel {
-  @apply relative w-full max-w-sm rounded-[2rem] bg-[rgba(255,251,245,0.98)] p-8 text-center shadow-[0_30px_80px_rgba(20,33,43,0.18)];
-}
-
-.danger-button {
-  @apply rounded-[1.2rem] px-5 py-3 text-sm font-semibold text-white transition-all;
-  background: var(--danger);
-}
-
-.danger-button:hover {
-  opacity: 0.9;
-}
-
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.modal-enter-active .modal-panel,
-.modal-leave-active .modal-panel {
-  transition: transform 0.2s ease;
-}
-
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-
-.modal-enter-from .modal-panel,
-.modal-leave-to .modal-panel {
-  transform: scale(0.96);
-}
-</style>

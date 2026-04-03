@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import WorkspaceCommandPalette from '@/components/WorkspaceCommandPalette.vue'
 import { BRAND } from '@/config/brand'
 import { useAuthStore } from '@/store/auth'
 import { useLocaleStore } from '@/store/locale'
@@ -11,6 +12,7 @@ const authStore = useAuthStore()
 const localeStore = useLocaleStore()
 
 const isCollapsed = ref(false)
+const isCommandPaletteOpen = ref(false)
 
 const copy = computed(() =>
   localeStore.isChinese
@@ -21,6 +23,8 @@ const copy = computed(() =>
         logout: '退出登录',
         collapse: '收起导航',
         expand: '展开导航',
+        quickSearch: '快速搜索',
+        quickSearchHint: 'Ctrl + K',
         nav: [
           { to: '/admin/roadmap', short: '图', label: '路线图', hint: '全屏查看与编辑' },
           { to: '/admin/notes', short: '记', label: '笔记', hint: '节点下的内容沉淀' },
@@ -35,6 +39,8 @@ const copy = computed(() =>
         logout: 'Log out',
         collapse: 'Collapse navigation',
         expand: 'Expand navigation',
+        quickSearch: 'Quick search',
+        quickSearchHint: 'Ctrl + K',
         nav: [
           { to: '/admin/roadmap', short: 'RM', label: 'Roadmap', hint: 'Full canvas first' },
           { to: '/admin/notes', short: 'NT', label: 'Notes', hint: 'Capture what matters' },
@@ -73,7 +79,7 @@ const handleLogout = () => {
 const handleKeydown = (event: KeyboardEvent) => {
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault()
-    router.push('/admin/search')
+    isCommandPaletteOpen.value = !isCommandPaletteOpen.value
   }
 }
 
@@ -137,6 +143,15 @@ onBeforeUnmount(() => {
                 {{ workspace.workspace_name }}
               </option>
             </select>
+
+            <button
+              class="mt-3 flex w-full items-center justify-between rounded-[14px] border border-[rgba(15,23,42,0.08)] bg-[rgba(247,247,245,0.96)] px-3 py-2.5 text-left text-sm font-semibold text-[var(--ink-main)] transition-colors hover:border-[rgba(15,23,42,0.14)] hover:text-[var(--ink-strong)]"
+              type="button"
+              @click="isCommandPaletteOpen = true"
+            >
+              <span>{{ copy.quickSearch }}</span>
+              <span class="text-xs text-[var(--ink-soft)]">{{ copy.quickSearchHint }}</span>
+            </button>
           </div>
 
           <nav class="space-y-1 px-1">
@@ -187,4 +202,6 @@ onBeforeUnmount(() => {
       </main>
     </div>
   </div>
+
+  <WorkspaceCommandPalette :open="isCommandPaletteOpen" @close="isCommandPaletteOpen = false" />
 </template>

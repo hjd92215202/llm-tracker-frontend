@@ -31,7 +31,7 @@ const copy = computed(() =>
         workspaceFallback: '当前空间',
         generalNode: '通用记录',
         nodeFallback: '节点',
-        outline: '内容目录',
+        outline: '目录',
         readingTime: '分钟阅读',
         linkedArtifacts: '关联资料',
         untitledArtifact: '未命名资料',
@@ -99,40 +99,60 @@ const editNote = () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-[linear-gradient(180deg,#faf7f0_0%,#f4f1eb_100%)]">
-    <div class="border-b border-[rgba(20,33,43,0.08)] bg-[rgba(255,251,245,0.84)] backdrop-blur">
-      <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4 lg:px-10">
+  <div class="min-h-screen bg-[linear-gradient(180deg,#fafaf8_0%,#f4f6f8_100%)]">
+    <div class="border-b border-[rgba(15,23,42,0.08)] bg-[rgba(255,255,255,0.72)] backdrop-blur">
+      <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
         <button class="product-button-secondary !px-5 !py-3" type="button" @click="goBack">{{ copy.back }}</button>
-
-        <div class="hidden items-center gap-3 lg:flex">
-          <span class="pill">{{ currentWorkspaceName }}</span>
-          <span class="pill pill-brand">{{ currentNodeTitle }}</span>
-          <button v-if="canEdit" class="product-button-primary !px-5 !py-3" type="button" @click="editNote">
-            {{ copy.edit }}
-          </button>
-        </div>
+        <button v-if="canEdit" class="product-button-dark !px-5 !py-3" type="button" @click="editNote">
+          {{ copy.edit }}
+        </button>
       </div>
     </div>
 
-    <div v-if="loading" class="mx-auto max-w-5xl px-6 py-24 text-center text-sm font-semibold text-[var(--ink-soft)] lg:px-10">
+    <div v-if="loading" class="mx-auto max-w-5xl px-6 py-24 text-center text-sm font-semibold text-[var(--ink-soft)]">
       {{ copy.loading }}
     </div>
 
-    <div v-else-if="errorMessage" class="mx-auto max-w-5xl px-6 py-24 lg:px-10">
+    <div v-else-if="errorMessage" class="mx-auto max-w-5xl px-6 py-24">
       <div class="product-error px-6 py-5 text-sm font-semibold">{{ errorMessage }}</div>
     </div>
 
-    <div v-else-if="note" class="mx-auto max-w-7xl px-6 py-8 lg:px-10">
-      <div class="grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
+    <div v-else-if="note" class="mx-auto max-w-6xl px-6 py-8">
+      <section class="rounded-[2rem] border border-[rgba(15,23,42,0.08)] bg-[rgba(255,255,255,0.8)] p-8 shadow-[0_18px_50px_rgba(20,33,43,0.05)]">
+        <div class="flex flex-wrap gap-2">
+          <span class="admin-chip-warm">{{ currentNodeTitle }}</span>
+          <span class="admin-chip">{{ currentWorkspaceName }}</span>
+          <span class="admin-chip">{{ new Date(note.created_at).toLocaleDateString(localeStore.locale) }}</span>
+          <span class="admin-chip">{{ readingTime }} {{ copy.readingTime }}</span>
+        </div>
+
+        <h1 class="product-title mt-6 text-4xl leading-[0.96] md:text-6xl">{{ note.title }}</h1>
+
+        <div v-if="note.tags?.length" class="mt-6 flex flex-wrap gap-2">
+          <span
+            v-for="tag in note.tags"
+            :key="tag"
+            class="rounded-full border border-[rgba(15,23,42,0.08)] bg-[rgba(255,250,242,0.9)] px-3 py-1 text-[11px] font-black text-[var(--ink-main)]"
+          >
+            #{{ tag }}
+          </span>
+        </div>
+      </section>
+
+      <div class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
+        <article class="rounded-[2rem] border border-[rgba(15,23,42,0.08)] bg-[rgba(255,255,255,0.84)] px-8 py-10 shadow-[0_18px_50px_rgba(20,33,43,0.05)]">
+          <MdPreview :modelValue="note.content" :editorId="'note-preview'" theme="light" class="bg-transparent! no-padding-preview" />
+        </article>
+
         <aside class="space-y-6">
-          <section class="rounded-[1.8rem] border border-[rgba(20,33,43,0.08)] bg-[rgba(255,251,245,0.84)] p-5 shadow-[0_14px_36px_rgba(20,33,43,0.04)]">
+          <section class="rounded-[1.8rem] border border-[rgba(15,23,42,0.08)] bg-[rgba(255,255,255,0.82)] p-5 shadow-[0_14px_36px_rgba(20,33,43,0.04)]">
             <div class="text-[11px] font-black uppercase tracking-[0.24em] text-[var(--brand)]">{{ copy.outline }}</div>
             <div class="mt-4 text-sm text-[var(--ink-main)]">
               <MdCatalog :editorId="'note-preview'" :scrollElement="scrollElement" />
             </div>
           </section>
 
-          <section class="rounded-[1.8rem] border border-[rgba(20,33,43,0.08)] bg-[rgba(255,251,245,0.84)] p-5 shadow-[0_14px_36px_rgba(20,33,43,0.04)]">
+          <section class="rounded-[1.8rem] border border-[rgba(15,23,42,0.08)] bg-[rgba(255,255,255,0.82)] p-5 shadow-[0_14px_36px_rgba(20,33,43,0.04)]">
             <div class="text-[11px] font-black uppercase tracking-[0.24em] text-[var(--brand)]">{{ copy.linkedArtifacts }}</div>
 
             <div v-if="artifacts.length > 0" class="mt-4 space-y-3">
@@ -157,32 +177,6 @@ const editNote = () => {
             </div>
           </section>
         </aside>
-
-        <main class="min-w-0">
-          <section class="rounded-[2rem] border border-[rgba(20,33,43,0.08)] bg-[rgba(255,255,255,0.72)] p-8 shadow-[0_18px_50px_rgba(20,33,43,0.05)]">
-            <div class="flex flex-wrap items-center gap-3">
-              <span class="pill pill-brand">{{ currentNodeTitle }}</span>
-              <span class="pill">{{ new Date(note.created_at).toLocaleDateString(localeStore.locale) }}</span>
-              <span class="pill">{{ readingTime }} {{ copy.readingTime }}</span>
-            </div>
-
-            <h1 class="product-title mt-6 text-4xl leading-[0.96] md:text-6xl">{{ note.title }}</h1>
-
-            <div v-if="note.tags?.length" class="mt-6 flex flex-wrap gap-2">
-              <span
-                v-for="tag in note.tags"
-                :key="tag"
-                class="rounded-full border border-[rgba(20,33,43,0.08)] bg-[rgba(255,250,242,0.9)] px-3 py-1 text-[11px] font-black text-[var(--ink-main)]"
-              >
-                #{{ tag }}
-              </span>
-            </div>
-          </section>
-
-          <article class="note-body mt-6 rounded-[2rem] border border-[rgba(20,33,43,0.08)] bg-[rgba(255,255,255,0.76)] px-8 py-10 shadow-[0_18px_50px_rgba(20,33,43,0.05)]">
-            <MdPreview :modelValue="note.content" :editorId="'note-preview'" theme="light" class="bg-transparent! no-padding-preview" />
-          </article>
-        </main>
       </div>
     </div>
   </div>
@@ -191,16 +185,8 @@ const editNote = () => {
 <style lang="postcss" scoped>
 @reference "@/style.css";
 
-.pill {
-  @apply inline-flex rounded-full bg-[rgba(20,33,43,0.06)] px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-[var(--ink-main)];
-}
-
-.pill-brand {
-  @apply bg-[rgba(216,110,59,0.12)] text-[var(--brand)];
-}
-
 .artifact-card {
-  @apply block rounded-[1.4rem] border border-[rgba(20,33,43,0.08)] bg-[rgba(255,255,255,0.72)] px-4 py-4 transition-all;
+  @apply block rounded-[1.4rem] border border-[rgba(15,23,42,0.08)] bg-[rgba(247,247,245,0.82)] px-4 py-4 transition-all;
 }
 
 .artifact-card:hover {
