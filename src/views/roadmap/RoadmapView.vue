@@ -28,7 +28,7 @@ const copy = computed(() =>
   localeStore.isChinese
     ? {
         title: '路线图',
-        summary: '点击节点，向下看对应笔记。',
+        summary: '点击节点，向下继续看对应笔记。',
         loading: '正在加载路线图...',
         loadError: '加载路线图失败',
         linkedNotes: '相关笔记',
@@ -36,7 +36,7 @@ const copy = computed(() =>
         noDescription: '这个节点还没有补充说明。',
         openNote: '查看笔记',
         notesAction: '笔记',
-        manageAction: '管理台',
+        manageAction: '管理',
         emptyHint: '点击上方节点后，相关笔记会显示在这里。',
         theory: '理论',
         coding: '编码',
@@ -55,7 +55,7 @@ const copy = computed(() =>
         noDescription: 'No description yet.',
         openNote: 'Open note',
         notesAction: 'Notes',
-        manageAction: 'Workspace',
+        manageAction: 'Manage',
         emptyHint: 'Click a node above and the related notes will appear here.',
         theory: 'Theory',
         coding: 'Coding',

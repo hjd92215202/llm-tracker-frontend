@@ -26,7 +26,7 @@ const copy = computed(() =>
     ? {
         badge: '空间邀请',
         title: '加入新的协作空间',
-        summary: '打开后就能继续看路线图、笔记和当前推进。',
+        summary: '加入后就能继续看路线图、笔记和当前推进。',
         inviter: '邀请人',
         role: '加入角色',
         expires: '失效时间',
@@ -34,7 +34,7 @@ const copy = computed(() =>
         accepting: '加入中...',
         login: '先登录',
         register: '注册后加入',
-        success: '已加入空间，正在进入路线图',
+        success: '已加入空间，正在进入路线图...',
         loadError: '邀请链接无效或已失效',
       }
     : {

@@ -34,7 +34,7 @@ const copy = computed(() =>
     ? {
         kicker: '路线图',
         title: '路线图',
-        summary: '查看路径，选择节点，继续推进。',
+        summary: '先看整张图，再点节点继续往下看笔记。',
         share: '复制分享链接',
         shareDone: '链接已复制',
         addNode: '新增节点',
@@ -43,16 +43,13 @@ const copy = computed(() =>
         loading: '正在加载路线图...',
         loadError: '加载路线图失败',
         noWorkspace: '当前没有可用空间。',
-        selectedTitle: '当前节点',
         emptyTitle: '点击一个节点查看详情',
-        emptyCopy: '右侧会显示节点说明和关联笔记，方便你从大图进入具体执行。',
+        emptyCopy: '节点说明和关联笔记会显示在下方，方便你从全局直接进入执行细节。',
         linkedNotes: '关联笔记',
         noNotes: '这个节点下还没有笔记。',
         openNote: '打开笔记',
         noDescription: '这个节点还没有补充说明。',
-        listTitle: '节点列表',
-        listCopy: '这里保留最基础的节点管理，只做和路线图本身相关的操作。',
-        edit: '编辑',
+        edit: '编辑节点',
         save: '保存节点',
         delete: '删除节点',
         cancel: '取消',
@@ -78,7 +75,7 @@ const copy = computed(() =>
     : {
         kicker: 'Roadmap',
         title: 'Roadmap',
-        summary: 'View the path, pick a node, and keep moving.',
+        summary: 'See the full canvas first, then click a node and continue into the notes below.',
         share: 'Copy share link',
         shareDone: 'Link copied',
         addNode: 'Add node',
@@ -87,16 +84,13 @@ const copy = computed(() =>
         loading: 'Loading roadmap...',
         loadError: 'Unable to load roadmap',
         noWorkspace: 'There is no active workspace.',
-        selectedTitle: 'Selected node',
         emptyTitle: 'Click a node to view details',
-        emptyCopy: 'The right side shows the description and linked notes so you can move from the big picture into the work.',
+        emptyCopy: 'The node description and related notes appear below the canvas.',
         linkedNotes: 'Linked notes',
         noNotes: 'There are no notes under this node yet.',
         openNote: 'Open note',
         noDescription: 'No description yet.',
-        listTitle: 'Node list',
-        listCopy: 'This list keeps only the basic controls that are directly related to the roadmap.',
-        edit: 'Edit',
+        edit: 'Edit node',
         save: 'Save node',
         delete: 'Delete node',
         cancel: 'Cancel',
@@ -194,6 +188,9 @@ const loadNotes = async (nodeId: number) => {
 
   try {
     linkedNotes.value = await noteApi.getNotesByNode(nodeId)
+    setTimeout(() => {
+      document.getElementById('admin-roadmap-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 80)
   } catch {
     linkedNotes.value = []
   } finally {
@@ -313,30 +310,32 @@ watch(
     </div>
 
     <template v-else>
-      <section class="roadmap-stage">
-        <div class="roadmap-floating-bar roadmap-floating-bar-left">
-          <div class="admin-kicker">{{ copy.kicker }}</div>
-          <div class="mt-2 text-lg font-semibold text-[var(--ink-strong)]">{{ currentWorkspace?.workspace_name }}</div>
+      <section>
+        <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <div class="admin-kicker">{{ copy.kicker }}</div>
+            <h1 class="admin-headline mt-3">{{ currentWorkspace.workspace_name }}</h1>
+            <p class="admin-subtitle mt-5 max-w-3xl">{{ copy.summary }}</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3">
+            <span :class="hasWriteAccess ? 'admin-chip-dark' : 'admin-chip'">
+              {{ hasWriteAccess ? copy.writable : copy.readonly }}
+            </span>
+            <button class="product-button-secondary" type="button" @click="copyShareLink">{{ copy.share }}</button>
+            <button v-if="hasWriteAccess" class="product-button-dark" type="button" @click="openEdit()">{{ copy.addNode }}</button>
+          </div>
         </div>
 
-        <div class="roadmap-floating-bar roadmap-floating-bar-right">
-          <span :class="hasWriteAccess ? 'admin-chip-dark' : 'admin-chip'">
-            {{ hasWriteAccess ? copy.writable : copy.readonly }}
-          </span>
-          <button class="product-button-secondary" type="button" @click="copyShareLink">{{ copy.share }}</button>
-          <button v-if="hasWriteAccess" class="product-button-dark" type="button" @click="openEdit()">{{ copy.addNode }}</button>
-        </div>
-
-        <div v-if="shareMessage" class="roadmap-floating-hint">
+        <div v-if="shareMessage" class="mt-4 inline-flex rounded-full bg-[rgba(15,23,42,0.06)] px-4 py-2 text-sm font-semibold text-[var(--ink-main)]">
           {{ shareMessage }}
         </div>
 
-        <div v-if="loading" class="roadmap-canvas-shell">
-          <div class="admin-empty !border-none !bg-transparent !p-0">{{ copy.loading }}</div>
-        </div>
+        <div class="roadmap-canvas-shell mt-6">
+          <div v-if="loading" class="admin-empty !border-none !bg-transparent !p-0">{{ copy.loading }}</div>
 
-        <div v-else class="roadmap-canvas-shell">
           <VueFlow
+            v-else
             class="h-full w-full bg-transparent"
             :nodes="flowNodes"
             :edges="flowEdges"
@@ -351,9 +350,14 @@ watch(
             <Controls />
           </VueFlow>
         </div>
+      </section>
 
-        <Transition name="fade-card">
-          <aside v-if="selectedNode" class="roadmap-detail-float">
+      <section
+        id="admin-roadmap-detail"
+        class="mt-6 rounded-[32px] border border-[rgba(15,23,42,0.06)] bg-white px-6 py-6 md:px-8"
+      >
+        <template v-if="selectedNode">
+          <div class="flex flex-wrap items-center justify-between gap-4">
             <div class="flex flex-wrap gap-2">
               <span class="admin-chip-warm">{{ typeLabel(selectedNode.node_type) }}</span>
               <span :class="selectedNode.status === 'completed' ? 'admin-chip-green' : selectedNode.status === 'in_progress' ? 'admin-chip-blue' : 'admin-chip'">
@@ -361,34 +365,32 @@ watch(
               </span>
             </div>
 
-            <div class="mt-4 text-xl font-semibold tracking-[-0.03em] text-[var(--ink-strong)]">{{ selectedNode.title }}</div>
-            <p class="mt-3 text-sm leading-7 text-[var(--ink-soft)]">{{ selectedNode.description || copy.noDescription }}</p>
-
-            <div class="mt-5 text-sm font-semibold text-[var(--ink-main)]">{{ copy.linkedNotes }}</div>
-
-            <div v-if="loadingNotes" class="mt-3 text-sm text-[var(--ink-soft)]">{{ copy.loading }}</div>
-            <div v-else-if="linkedNotes.length > 0" class="mt-3 space-y-2">
-              <button
-                v-for="note in linkedNotes.slice(0, 2)"
-                :key="note.id"
-                class="block w-full rounded-[16px] border border-[rgba(15,23,42,0.08)] bg-[rgba(247,247,245,0.96)] px-4 py-3 text-left"
-                type="button"
-                @click="openNote(note.id)"
-              >
-                <div class="text-sm font-semibold text-[var(--ink-strong)]">{{ note.title }}</div>
-                <div class="mt-1 text-xs text-[var(--ink-soft)]">{{ note.summary || copy.noDescription }}</div>
-              </button>
-            </div>
-            <div v-else class="mt-3 text-sm text-[var(--ink-soft)]">{{ copy.noNotes }}</div>
-
-            <button v-if="hasWriteAccess" class="mt-5 text-sm font-semibold text-[var(--ink-strong)]" type="button" @click="openEdit(selectedNode)">
+            <button v-if="hasWriteAccess" class="text-sm font-semibold text-[var(--ink-strong)]" type="button" @click="openEdit(selectedNode)">
               {{ copy.edit }}
             </button>
-          </aside>
-        </Transition>
+          </div>
 
-        <div v-if="!selectedNode && !loading" class="roadmap-bottom-hint">
-          {{ copy.emptyTitle }}
+          <h2 class="mt-4 text-3xl font-bold tracking-[-0.04em] text-[var(--ink-strong)]">{{ selectedNode.title }}</h2>
+          <p class="mt-3 max-w-3xl text-base leading-8 text-[var(--ink-soft)]">{{ selectedNode.description || copy.noDescription }}</p>
+
+          <div class="mt-8 text-sm font-semibold text-[var(--ink-main)]">{{ copy.linkedNotes }}</div>
+
+          <div v-if="loadingNotes" class="admin-empty mt-4">{{ copy.loading }}</div>
+          <div v-else-if="linkedNotes.length > 0" class="mt-4 grid gap-4 md:grid-cols-2">
+            <article v-for="note in linkedNotes" :key="note.id" class="admin-list-card">
+              <div class="text-base font-semibold text-[var(--ink-strong)]">{{ note.title }}</div>
+              <p class="mt-2 text-sm leading-7 text-[var(--ink-soft)]">{{ note.summary || copy.noDescription }}</p>
+              <button class="mt-4 text-sm font-semibold text-[var(--ink-strong)]" type="button" @click="openNote(note.id)">
+                {{ copy.openNote }}
+              </button>
+            </article>
+          </div>
+          <div v-else class="admin-empty mt-4">{{ copy.noNotes }}</div>
+        </template>
+
+        <div v-else class="admin-empty !border-dashed !bg-[rgba(255,255,255,0.4)]">
+          <div class="text-base font-semibold text-[var(--ink-strong)]">{{ copy.emptyTitle }}</div>
+          <p class="mt-3 text-sm leading-7 text-[var(--ink-soft)]">{{ copy.emptyCopy }}</p>
         </div>
       </section>
     </template>
@@ -472,38 +474,12 @@ watch(
 
 <style scoped>
 .roadmap-canvas-shell {
-  height: 600px;
+  height: calc(100vh - 260px);
+  min-height: 640px;
   overflow: hidden;
   border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 24px;
+  border-radius: 28px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 247, 245, 0.94));
-}
-
-.roadmap-list-card {
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.94);
-  padding: 18px;
-  transition: box-shadow 160ms ease, transform 160ms ease;
-}
-
-.roadmap-list-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.04);
-}
-
-.roadmap-order-chip {
-  display: inline-flex;
-  height: 40px;
-  min-width: 52px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 14px;
-  background: rgba(247, 247, 245, 0.96);
-  color: var(--ink-main);
-  font-size: 12px;
-  font-weight: 700;
 }
 
 :deep(.roadmap-canvas-node) {

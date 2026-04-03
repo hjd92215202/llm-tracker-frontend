@@ -95,7 +95,7 @@
     border: 1px solid var(--line-soft);
     background: var(--surface);
     backdrop-filter: blur(18px);
-    box-shadow: var(--shadow-soft);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
   }
 
   .product-panel-strong {
@@ -239,8 +239,8 @@
     border-radius: 18px;
     border: 1px solid rgba(15, 23, 42, 0.08);
     background: rgba(255, 255, 255, 0.82);
-    padding: 22px;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+    padding: 20px;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.03);
   }
 
   .product-kpi {
@@ -817,7 +817,7 @@
   .admin-page {
     margin: 0 auto;
     width: min(100%, 1260px);
-    padding: 28px 28px 40px;
+    padding: 24px 24px 36px;
   }
 
   .admin-kicker {
@@ -848,7 +848,7 @@
   .admin-card-muted {
     border: 1px solid rgba(15, 23, 42, 0.08);
     border-radius: 24px;
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.035);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.03);
   }
 
   .admin-card {
@@ -893,8 +893,8 @@
     border: 1px solid rgba(15, 23, 42, 0.08);
     border-radius: 20px;
     background: rgba(255, 255, 255, 0.92);
-    padding: 18px 20px;
-    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.03);
+    padding: 16px 18px;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.025);
   }
 
   .admin-kpi-label {
@@ -1016,9 +1016,9 @@
 
   .admin-sidebar-card {
     border: 1px solid rgba(15, 23, 42, 0.08);
-    border-radius: 20px;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 14px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.86);
+    padding: 12px;
   }
 
   .admin-sidebar-label {
@@ -1034,8 +1034,8 @@
     align-items: center;
     gap: 12px;
     border: 1px solid transparent;
-    border-radius: 18px;
-    padding: 10px 12px;
+    border-radius: 16px;
+    padding: 9px 10px;
     color: var(--ink-main);
     transition:
       background-color 160ms ease,
@@ -1054,20 +1054,20 @@
     border-color: rgba(15, 23, 42, 0.08);
     background: white;
     color: var(--ink-strong);
-    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.03);
   }
 
   .admin-nav-icon {
     display: inline-flex;
-    height: 34px;
-    width: 34px;
+    height: 30px;
+    width: 30px;
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    border-radius: 12px;
+    border-radius: 10px;
     background: rgba(15, 23, 42, 0.05);
     color: var(--ink-main);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 800;
   }
 

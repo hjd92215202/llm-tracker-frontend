@@ -8,170 +8,104 @@ import { useLocaleStore } from '@/store/locale'
 const authStore = useAuthStore()
 const localeStore = useLocaleStore()
 
-const primaryHref = computed(() => (authStore.isLoggedIn ? '/admin/dashboard' : '/register'))
-const secondaryHref = computed(() =>
-  authStore.isLoggedIn ? '/admin/search' : { name: 'login', query: { redirect: '/admin/dashboard' } }
-)
+const primaryHref = computed(() => (authStore.isLoggedIn ? '/roadmap' : '/register'))
+const secondaryHref = computed(() => (authStore.isLoggedIn ? '/admin/workspace' : '/login'))
 
 const copy = computed(() =>
   localeStore.isChinese
     ? {
-        descriptor: 'AI 团队工作台',
-        nav: {
-          product: '产品能力',
-          pricing: '价格方案',
-        },
-        badge: `${BRAND.name} · 让团队协作更清晰`,
-        title: '把路线图、笔记和团队协作放进同一个工作空间',
+        descriptor: '路线图协作空间',
+        badge: '打开就看路线图',
+        title: '把想做的事，直接画成一张清晰路线图',
         summary:
-          'ContextOps 帮你把目标、进度、知识和成员协作放到一个清晰入口里。少切换工具，少丢上下文，更快把想法推进成结果。',
-        primary: authStore.isLoggedIn ? '进入工作台' : '立即开始',
-        secondary: authStore.isLoggedIn ? '打开搜索' : '登录体验',
+          '从目标到执行节点，再到对应笔记，全部放在一条路径上。先看全局，再点进细节，不用在一堆页面里来回找。',
+        primary: authStore.isLoggedIn ? '进入路线图' : '立即开始',
+        secondary: authStore.isLoggedIn ? '管理空间' : '登录',
         highlights: [
-          { title: '一个入口', description: '最重要的信息先看到，不用在多个页面之间反复切换。' },
-          { title: '进度清楚', description: '路线图、笔记和动态保持同步，团队知道现在该做什么。' },
-          { title: '经验沉淀', description: '每次研究与交付都会留下可复用的记录，而不是散落在各处。' },
+          { title: '先看全局', description: '最重要的路径先摆在眼前，知道现在做到哪里。' },
+          { title: '节点连着笔记', description: '每个节点都能继续往下看方法、结论和过程。' },
+          { title: '分享更直接', description: '路线图可以分享给别人查看，理解成本更低。' },
         ],
-        consoleTitle: '空间总览',
-        consoleName: '产品增长空间',
-        consoleSummary: '打开后先看到最重要的事：完成率、待推进节点、最新笔记和最近动态。',
-        consoleMetrics: [
-          { label: '完成率', value: '74%', hint: '本周重点节点仍在持续推进' },
-          { label: '进行中', value: '6', hint: '每个节点都能看到负责人和状态' },
-          { label: '笔记数', value: '18', hint: '研究结论与交付动作保持关联' },
+        previewTitle: '进入后先看到什么',
+        previewName: '产品增长空间',
+        previewSummary: '路线图是第一屏。点一个节点，继续往下看它对应的笔记和细节。',
+        previewMetrics: [
+          { label: '总节点', value: '12' },
+          { label: '进行中', value: '3' },
+          { label: '已完成', value: '7' },
         ],
-        activityTitle: '最近动态',
-        activities: [
-          '新成员加入产品增长空间，并完成初始协作设置。',
-          '评估方法笔记已更新，并关联到本周重点节点。',
-          '路线图新增两个任务，其中一个已进入执行中。',
-        ],
-        featureTitle: '围绕团队日常协作，把重点放在最前面',
-        features: [
+        previewSteps: ['明确目标路径', '拆出当前节点', '沉淀关键笔记'],
+        noteTitle: '节点详情',
+        noteSummary: '点击节点后，下面直接展开相关笔记，不打断你的思路。',
+        pathTitle: '典型路径',
+        valueTitle: '为什么会顺手',
+        values: [
           {
-            title: '总览台',
-            description: '把完成率、待办、最近动态和关键笔记收进一个首页，先看重点，再进入细节。',
+            title: '一眼看懂现在的进度',
+            description: '不是看一堆列表，而是直接看到路径、顺序和当前重点。',
           },
           {
-            title: '路线图',
-            description: '把方向拆成清晰节点，让团队知道现在推进到哪、下一步去哪里。',
+            title: '研究和执行放在一起',
+            description: '节点下面就是笔记，方法、结论和决策不会散掉。',
           },
           {
-            title: '研究笔记',
-            description: '记录结论、实验和方案讨论，让笔记始终留在业务上下文里。',
-          },
-          {
-            title: '团队权限',
-            description: '不同角色看到不同边界，既能协作，也能让空间保持清晰秩序。',
+            title: '适合个人，也适合小团队',
+            description: '自己能用，分享出去也能让别人快速看懂你在推进什么。',
           },
         ],
-        pricingTitle: '从一个团队开始，按协作规模升级',
-        pricing: [
-          {
-            name: '个人试用',
-            price: '免费',
-            description: '适合个人体验与最初验证',
-            bullets: ['1 个空间', '基础路线图与笔记', '个人工作流试运行'],
-          },
-          {
-            name: '团队版',
-            price: '299 元 / 空间 / 月',
-            description: '适合已经开始团队协作的业务',
-            bullets: ['成员与权限管理', '总览、动态与搜索', '更清晰的协作结构'],
-            featured: true,
-          },
-          {
-            name: '企业版',
-            price: '联系咨询',
-            description: '适合多团队与更复杂的治理需求',
-            bullets: ['多空间管理', '更正式的协作流程', '迁移与落地支持'],
-          },
-        ],
-        ctaTitle: '让团队在一个空间里同步目标、知识和执行',
-        ctaSummary: '越少切换，越少遗漏。让每一次讨论、记录和推进都回到同一个地方。',
+        ctaTitle: '少切页面，少丢上下文，直接推进事情',
+        ctaSummary: '适合把复杂任务拆成路线图的人，也适合围绕同一条路径协作的小团队。',
       }
     : {
-        descriptor: 'AI workspace for teams',
-        nav: {
-          product: 'Product',
-          pricing: 'Pricing',
-        },
-        badge: `${BRAND.name} · Clearer teamwork for AI teams`,
-        title: 'Keep roadmap, notes, and collaboration inside one workspace',
+        descriptor: 'Roadmap workspace',
+        badge: 'Roadmap first',
+        title: 'Turn complex work into one clear roadmap',
         summary:
-          'ContextOps gives teams one clear place for goals, progress, knowledge, and collaboration so work keeps moving without losing context.',
-        primary: authStore.isLoggedIn ? 'Open workspace' : 'Get started',
-        secondary: authStore.isLoggedIn ? 'Open search' : 'Sign in',
+          'Keep goals, execution nodes, and notes on one path. Open the product, see the big picture, then move straight into detail.',
+        primary: authStore.isLoggedIn ? 'Open roadmap' : 'Get started',
+        secondary: authStore.isLoggedIn ? 'Manage workspace' : 'Sign in',
         highlights: [
-          { title: 'One home', description: 'See the most important information first instead of bouncing across tools.' },
-          { title: 'Clear progress', description: 'Roadmap, notes, and activity stay aligned so the team knows what happens next.' },
-          { title: 'Reusable memory', description: 'Research and delivery work turn into knowledge the team can use again.' },
+          { title: 'See the path first', description: 'The important path is visible immediately instead of buried in menus.' },
+          { title: 'Nodes connect to notes', description: 'Each node can open the notes and thinking behind the work.' },
+          { title: 'Share with clarity', description: 'A shared roadmap is easier for others to understand at a glance.' },
         ],
-        consoleTitle: 'Workspace overview',
-        consoleName: 'Product Growth Workspace',
-        consoleSummary: 'Open the workspace and immediately see completion, active work, recent notes, and team activity.',
-        consoleMetrics: [
-          { label: 'Completion', value: '74%', hint: 'Priority work keeps moving through the roadmap' },
-          { label: 'In progress', value: '6', hint: 'Every active node has visible context and ownership' },
-          { label: 'Notes', value: '18', hint: 'Research stays attached to delivery decisions' },
+        previewTitle: 'What you see first',
+        previewName: 'Growth workspace',
+        previewSummary: 'The roadmap is the home screen. Click a node and keep scrolling into the notes below it.',
+        previewMetrics: [
+          { label: 'Nodes', value: '12' },
+          { label: 'Active', value: '3' },
+          { label: 'Done', value: '7' },
         ],
-        activityTitle: 'Recent activity',
-        activities: [
-          'A new teammate joined the growth workspace and completed setup.',
-          'The evaluation note was refreshed and linked to a priority node.',
-          'Two new roadmap items were added and one moved into progress.',
-        ],
-        featureTitle: 'Built around daily teamwork with the most important things first',
-        features: [
+        previewSteps: ['Define the path', 'Pick the current node', 'Capture the note'],
+        noteTitle: 'Node details',
+        noteSummary: 'After you click a node, the related notes appear below without breaking the flow.',
+        pathTitle: 'Typical path',
+        valueTitle: 'Why it feels clear',
+        values: [
           {
-            title: 'Dashboard',
-            description: 'Bring completion, next steps, activity, and important notes into one focused home.',
+            title: 'Progress is visible immediately',
+            description: 'See the path, sequence, and current focus without parsing a dense workspace.',
           },
           {
-            title: 'Roadmap',
-            description: 'Break direction into clear nodes so the team knows what is moving and what comes next.',
+            title: 'Research stays attached to action',
+            description: 'Notes live under the roadmap nodes they belong to, not in a disconnected pile.',
           },
           {
-            title: 'Research notes',
-            description: 'Capture findings, experiments, and decisions without losing business context.',
-          },
-          {
-            title: 'Permissions',
-            description: 'Give every role the right surface while keeping the workspace orderly.',
+            title: 'Works for solo builders and teams',
+            description: 'Useful alone, and even more useful when you need to show others the path.',
           },
         ],
-        pricingTitle: 'Start with one team and grow with collaboration',
-        pricing: [
-          {
-            name: 'Starter',
-            price: 'Free',
-            description: 'For early exploration and solo validation',
-            bullets: ['1 workspace', 'Core roadmap and notes', 'Personal workflow testing'],
-          },
-          {
-            name: 'Team',
-            price: '$39 / workspace / month',
-            description: 'For teams already collaborating around shared work',
-            bullets: ['Members and permissions', 'Dashboard, activity, and search', 'A clearer team operating structure'],
-            featured: true,
-          },
-          {
-            name: 'Enterprise',
-            price: 'Contact sales',
-            description: 'For multi-team setups and stronger governance needs',
-            bullets: ['Multi-workspace management', 'More formal collaboration flows', 'Migration and rollout support'],
-          },
-        ],
-        ctaTitle: 'Keep goals, knowledge, and execution in one workspace',
-        ctaSummary: 'Switch less, lose less, and move work forward with more clarity.',
+        ctaTitle: 'Keep the path, notes, and progress in one place',
+        ctaSummary: 'Built for people who think best when the whole path is visible.',
       }
 )
 </script>
 
 <template>
   <div class="page-shell overflow-hidden">
-    <section class="relative pb-18 pt-6 md:pb-24">
-      <div class="absolute inset-x-0 top-0 h-[620px] bg-[radial-gradient(circle_at_top_left,_rgba(229,106,43,0.15),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(37,99,235,0.12),_transparent_24%),linear-gradient(180deg,_rgba(255,255,255,0.84)_0%,_rgba(245,247,251,0.3)_70%,_transparent_100%)]"></div>
+    <section class="relative pb-16 pt-6 md:pb-22">
+      <div class="absolute inset-x-0 top-0 h-[620px] bg-[radial-gradient(circle_at_top_left,_rgba(229,106,43,0.12),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(37,99,235,0.1),_transparent_24%),linear-gradient(180deg,_rgba(255,255,255,0.9)_0%,_rgba(245,247,251,0.38)_70%,_transparent_100%)]"></div>
 
       <header class="product-shell relative z-10 flex items-center justify-between gap-5 py-5">
         <router-link to="/" class="flex items-center gap-3 transition-opacity hover:opacity-80">
@@ -187,11 +121,6 @@ const copy = computed(() =>
             </span>
           </span>
         </router-link>
-
-        <nav class="hidden items-center gap-7 text-sm font-semibold text-[var(--ink-soft)] lg:flex">
-          <a href="#features" class="transition-colors hover:text-[var(--ink-strong)]">{{ copy.nav.product }}</a>
-          <a href="#pricing" class="transition-colors hover:text-[var(--ink-strong)]">{{ copy.nav.pricing }}</a>
-        </nav>
 
         <div class="flex items-center gap-3">
           <LanguageSwitcher />
@@ -241,23 +170,23 @@ const copy = computed(() =>
             <div class="flex items-start justify-between gap-5">
               <div>
                 <p class="text-[11px] font-semibold tracking-[0.08em] text-[rgba(255,255,255,0.56)]">
-                  {{ copy.consoleTitle }}
+                  {{ copy.previewTitle }}
                 </p>
                 <h2 class="mt-3 font-[var(--font-display)] text-3xl font-black tracking-[-0.05em]">
-                  {{ copy.consoleName }}
+                  {{ copy.previewName }}
                 </h2>
                 <p class="mt-4 max-w-md text-sm leading-7 text-[rgba(255,255,255,0.68)]">
-                  {{ copy.consoleSummary }}
+                  {{ copy.previewSummary }}
                 </p>
               </div>
               <span class="rounded-full bg-white/10 px-4 py-2 text-[11px] font-semibold text-[rgba(255,255,255,0.76)]">
-                {{ localeStore.isChinese ? '今日概览' : 'Live overview' }}
+                {{ localeStore.isChinese ? '路线图优先' : 'Roadmap first' }}
               </span>
             </div>
 
             <div class="mt-8 grid gap-4 md:grid-cols-3">
               <div
-                v-for="metric in copy.consoleMetrics"
+                v-for="metric in copy.previewMetrics"
                 :key="metric.label"
                 class="rounded-[1.5rem] border border-white/10 bg-[rgba(255,255,255,0.06)] p-5"
               >
@@ -267,27 +196,36 @@ const copy = computed(() =>
                 <div class="mt-3 font-[var(--font-display)] text-4xl font-black tracking-[-0.06em]">
                   {{ metric.value }}
                 </div>
-                <p class="mt-3 text-sm leading-6 text-[rgba(255,255,255,0.66)]">{{ metric.hint }}</p>
               </div>
             </div>
 
-            <div class="mt-5 rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.06)] p-5">
-              <div class="flex items-center justify-between gap-3">
+            <div class="mt-5 grid gap-4 md:grid-cols-[1.05fr_0.95fr]">
+              <div class="rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.06)] p-5">
                 <div class="text-[11px] font-semibold tracking-[0.08em] text-[rgba(255,255,255,0.56)]">
-                  {{ copy.activityTitle }}
+                  {{ copy.noteTitle }}
                 </div>
-                <div class="rounded-full bg-[rgba(229,106,43,0.18)] px-3 py-1 text-[11px] font-semibold text-[rgba(255,245,240,0.92)]">
-                  {{ localeStore.isChinese ? '持续推进中' : 'Team flow' }}
+                <div class="mt-4 rounded-[1.3rem] border border-white/10 bg-[rgba(255,255,255,0.06)] px-4 py-4">
+                  <div class="text-sm font-semibold text-white/92">
+                    {{ copy.previewSteps[1] }}
+                  </div>
+                  <p class="mt-2 text-sm leading-7 text-[rgba(255,255,255,0.68)]">
+                    {{ copy.noteSummary }}
+                  </p>
                 </div>
               </div>
 
-              <div class="mt-4 space-y-3">
-                <div
-                  v-for="activity in copy.activities"
-                  :key="activity"
-                  class="rounded-[1.2rem] border border-white/10 bg-[rgba(255,255,255,0.06)] px-4 py-3 text-sm leading-6 text-[rgba(255,255,255,0.72)]"
-                >
-                  {{ activity }}
+              <div class="rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.06)] p-5">
+                <div class="text-[11px] font-semibold tracking-[0.08em] text-[rgba(255,255,255,0.56)]">
+                  {{ copy.pathTitle }}
+                </div>
+                <div class="mt-4 space-y-3">
+                  <div
+                    v-for="step in copy.previewSteps"
+                    :key="step"
+                    class="rounded-[1.2rem] border border-white/10 bg-[rgba(255,255,255,0.06)] px-4 py-3 text-sm font-semibold leading-6 text-[rgba(255,255,255,0.78)]"
+                  >
+                    {{ step }}
+                  </div>
                 </div>
               </div>
             </div>
@@ -296,64 +234,17 @@ const copy = computed(() =>
       </div>
     </section>
 
-    <section id="features" class="product-shell py-14 md:py-18">
+    <section class="product-shell py-10 md:py-14">
       <div class="max-w-3xl">
-        <h2 class="product-section-title mt-7">{{ copy.featureTitle }}</h2>
+        <h2 class="product-section-title mt-7">{{ copy.valueTitle }}</h2>
       </div>
 
-      <div class="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        <article v-for="feature in copy.features" :key="feature.title" class="product-panel rounded-[2rem] p-7">
-          <h3 class="font-[var(--font-display)] text-3xl font-black tracking-[-0.05em] text-[var(--ink-strong)]">
-            {{ feature.title }}
+      <div class="mt-10 grid gap-5 md:grid-cols-3">
+        <article v-for="item in copy.values" :key="item.title" class="product-panel rounded-[2rem] p-7">
+          <h3 class="font-[var(--font-display)] text-2xl font-black tracking-[-0.05em] text-[var(--ink-strong)]">
+            {{ item.title }}
           </h3>
-          <p class="mt-4 text-sm leading-7 text-[var(--ink-soft)]">{{ feature.description }}</p>
-        </article>
-      </div>
-    </section>
-
-    <section id="pricing" class="product-shell pb-16 pt-14 md:pb-20 md:pt-18">
-      <div class="max-w-3xl">
-        <div class="product-eyebrow border border-[rgba(37,99,235,0.14)] bg-white/80 text-[var(--accent)]">
-          <span class="h-2.5 w-2.5 rounded-full bg-[var(--accent)]"></span>
-          {{ copy.nav.pricing }}
-        </div>
-        <h2 class="product-section-title mt-7">{{ copy.pricingTitle }}</h2>
-      </div>
-
-      <div class="mt-10 grid gap-5 lg:grid-cols-3">
-        <article
-          v-for="plan in copy.pricing"
-          :key="plan.name"
-          :class="plan.featured ? 'bg-[var(--ink-strong)] text-white shadow-[0_28px_90px_rgba(20,33,43,0.18)]' : 'product-panel text-[var(--ink-strong)]'"
-          class="rounded-[2rem] border p-8"
-        >
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <div class="font-[var(--font-display)] text-3xl font-black tracking-[-0.05em]">{{ plan.name }}</div>
-              <p :class="plan.featured ? 'text-[rgba(255,255,255,0.68)]' : 'text-[var(--ink-soft)]'" class="mt-3 text-sm leading-7">
-                {{ plan.description }}
-              </p>
-            </div>
-            <span
-              v-if="plan.featured"
-              class="rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-[rgba(255,255,255,0.82)]"
-            >
-              {{ localeStore.isChinese ? '推荐' : 'Recommended' }}
-            </span>
-          </div>
-
-          <div class="mt-8 font-[var(--font-display)] text-5xl font-black tracking-[-0.07em]">{{ plan.price }}</div>
-
-          <div class="mt-7 space-y-3">
-            <div
-              v-for="bullet in plan.bullets"
-              :key="bullet"
-              :class="plan.featured ? 'bg-[rgba(255,255,255,0.08)] text-[rgba(255,255,255,0.76)]' : 'bg-[rgba(255,255,255,0.64)] text-[var(--ink-main)]'"
-              class="rounded-[1.2rem] px-4 py-3 text-sm font-semibold leading-6"
-            >
-              {{ bullet }}
-            </div>
-          </div>
+          <p class="mt-4 text-sm leading-7 text-[var(--ink-soft)]">{{ item.description }}</p>
         </article>
       </div>
     </section>

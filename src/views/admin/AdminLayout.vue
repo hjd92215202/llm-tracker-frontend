@@ -15,31 +15,31 @@ const isCollapsed = ref(false)
 const copy = computed(() =>
   localeStore.isChinese
     ? {
-        brandLine: '路线图协作',
-        workspaceLabel: '空间切换',
+        brandLine: '路线图协作空间',
+        workspaceLabel: '当前空间',
         accountLabel: '当前账号',
         logout: '退出登录',
         collapse: '收起导航',
         expand: '展开导航',
         nav: [
-          { to: '/admin/roadmap', short: '图', label: '路线图', hint: '看整体路径' },
-          { to: '/admin/notes', short: '记', label: '笔记', hint: '沉淀结论' },
-          { to: '/admin/workspace', short: '空', label: '空间', hint: '成员与权限' },
-          { to: '/admin/dashboard', short: '总', label: '总览', hint: '看当前推进' },
+          { to: '/admin/roadmap', short: '图', label: '路线图', hint: '全屏查看与编辑' },
+          { to: '/admin/notes', short: '记', label: '笔记', hint: '节点下的内容沉淀' },
+          { to: '/admin/workspace', short: '队', label: '空间', hint: '成员、权限与邀请' },
+          { to: '/admin/dashboard', short: '览', label: '总览', hint: '看当前进度' },
         ],
       }
     : {
-        brandLine: 'Team workspace',
-        workspaceLabel: 'Active workspace',
+        brandLine: 'Roadmap workspace',
+        workspaceLabel: 'Current workspace',
         accountLabel: 'Account',
         logout: 'Log out',
         collapse: 'Collapse navigation',
         expand: 'Expand navigation',
         nav: [
-          { to: '/admin/dashboard', short: 'DB', label: 'Overview', hint: 'Current progress' },
-          { to: '/admin/roadmap', short: 'RM', label: 'Roadmap', hint: 'See the full path' },
-          { to: '/admin/notes', short: 'NT', label: 'Notes', hint: 'Capture decisions' },
+          { to: '/admin/roadmap', short: 'RM', label: 'Roadmap', hint: 'Full canvas first' },
+          { to: '/admin/notes', short: 'NT', label: 'Notes', hint: 'Capture what matters' },
           { to: '/admin/workspace', short: 'WS', label: 'Workspace', hint: 'Members and access' },
+          { to: '/admin/dashboard', short: 'OV', label: 'Overview', hint: 'Current progress' },
         ],
       }
 )
@@ -90,10 +90,10 @@ onBeforeUnmount(() => {
   <div class="min-h-screen bg-transparent">
     <div class="flex min-h-screen">
       <aside
-        :class="[isCollapsed ? 'w-[92px]' : 'w-[244px]']"
+        :class="[isCollapsed ? 'w-[88px]' : 'w-[228px]']"
         class="border-r border-[rgba(15,23,42,0.06)] bg-[rgba(248,248,246,0.88)] transition-all duration-300"
       >
-        <div class="flex h-full flex-col gap-4 px-3 pb-4 pt-4">
+        <div class="flex h-full flex-col gap-3 px-3 pb-3 pt-4">
           <div class="flex items-center justify-between gap-3 px-2">
             <router-link to="/" class="flex min-w-0 items-center gap-3">
               <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[rgba(15,23,42,0.08)] bg-white text-sm font-black text-[var(--ink-strong)]">
@@ -113,25 +113,6 @@ onBeforeUnmount(() => {
             >
               {{ isCollapsed ? '+' : '-' }}
             </button>
-          </div>
-
-          <div v-if="!isCollapsed" class="admin-sidebar-card">
-            <div class="flex items-start justify-between gap-3">
-              <div class="flex min-w-0 items-center gap-3">
-                <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[rgba(15,23,42,0.06)] text-sm font-bold text-[var(--ink-strong)]">
-                  {{ authStore.user?.username?.charAt(0)?.toUpperCase() || 'U' }}
-                </span>
-                <div class="min-w-0">
-                  <div class="admin-sidebar-label">{{ copy.accountLabel }}</div>
-                  <div class="mt-1 truncate text-sm font-semibold text-[var(--ink-strong)]">{{ authStore.user?.username }}</div>
-                  <div class="truncate text-xs text-[var(--ink-soft)]">{{ authStore.user?.email }}</div>
-                </div>
-              </div>
-
-              <button class="text-xs font-semibold text-[var(--danger)]" type="button" @click="handleLogout">
-                {{ copy.logout }}
-              </button>
-            </div>
           </div>
 
           <div v-if="!isCollapsed" class="admin-sidebar-card">
@@ -173,6 +154,27 @@ onBeforeUnmount(() => {
               </div>
             </router-link>
           </nav>
+
+          <div class="mt-auto">
+            <div v-if="!isCollapsed" class="admin-sidebar-card">
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex min-w-0 items-center gap-3">
+                  <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[rgba(15,23,42,0.06)] text-sm font-bold text-[var(--ink-strong)]">
+                    {{ authStore.user?.username?.charAt(0)?.toUpperCase() || 'U' }}
+                  </span>
+                  <div class="min-w-0">
+                    <div class="admin-sidebar-label">{{ copy.accountLabel }}</div>
+                    <div class="mt-1 truncate text-sm font-semibold text-[var(--ink-strong)]">{{ authStore.user?.username }}</div>
+                    <div class="truncate text-xs text-[var(--ink-soft)]">{{ authStore.user?.email }}</div>
+                  </div>
+                </div>
+
+                <button class="text-xs font-semibold text-[var(--danger)]" type="button" @click="handleLogout">
+                  {{ copy.logout }}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </aside>
 
