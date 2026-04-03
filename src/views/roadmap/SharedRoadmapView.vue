@@ -28,21 +28,21 @@ const token = computed(() => String(route.params.token || ''))
 const copy = computed(() =>
   localeStore.isChinese
     ? {
-        title: '公开路线图',
-        summary: '先看完整路径，再点节点继续往下看公开笔记。',
+        title: '路线图',
+        summary: '先看主线，点节点，再往下看公开内容。',
         loading: '正在加载路线图...',
         notesLoading: '正在加载笔记...',
         loadError: '这个分享页面已失效或不存在。',
-        notesTitle: '公开笔记',
+        notesTitle: '公开内容',
         noNotes: '这个节点下还没有公开笔记。',
         noDescription: '这个节点还没有补充说明。',
-        notePreview: '点一条笔记，直接查看完整内容。',
-        emptyHint: '先点上方节点，再往下看具体内容。',
-        noteContentTitle: '笔记内容',
-        registerTitle: '把你的项目路径也整理成一张清晰路线图',
-        registerSummary: '目标、节点、笔记放在一起，别人一眼就能看懂你在推进什么。',
-        registerAction: '免费开始',
+        emptyHint: '点一个节点，继续往下看内容。',
+        shareTag: '公开分享',
+        registerTitle: '把你的推进也放到一张图里',
+        registerSummary: '路线、节点、笔记放在一起，别人一眼就能看懂你在做什么。',
+        registerAction: '立即免费使用',
         loginAction: '登录',
+        openCanvas: '点节点展开内容',
         theory: '理论',
         coding: '编码',
         project: '项目',
@@ -51,21 +51,21 @@ const copy = computed(() =>
         completed: '已完成',
       }
     : {
-        title: 'Shared roadmap',
-        summary: 'See the full path first, then click a node and continue into the public notes.',
+        title: 'Roadmap',
+        summary: 'See the path first, then click a node and continue into the public content below.',
         loading: 'Loading roadmap...',
         notesLoading: 'Loading notes...',
         loadError: 'This shared page is no longer available.',
-        notesTitle: 'Public notes',
+        notesTitle: 'Public content',
         noNotes: 'There are no public notes under this node yet.',
         noDescription: 'No description yet.',
-        notePreview: 'Click a note to view the full content.',
-        emptyHint: 'Click a node above and continue into the details below.',
-        noteContentTitle: 'Note content',
-        registerTitle: 'Turn your own work into a clear roadmap',
-        registerSummary: 'Keep goals, nodes, and notes on one visible path.',
+        emptyHint: 'Click a node and continue into the content below.',
+        shareTag: 'Public share',
+        registerTitle: 'Turn your own work into one clear roadmap',
+        registerSummary: 'Keep the path, nodes, and notes in one visible view.',
         registerAction: 'Start free',
         loginAction: 'Sign in',
+        openCanvas: 'Click a node to open content',
         theory: 'Theory',
         coding: 'Coding',
         project: 'Project',
@@ -170,10 +170,10 @@ onMounted(() => {
       <div class="shared-hero">
         <div class="min-w-0">
           <div class="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ink-soft)]">
-            {{ roadmap?.workspace_name || copy.title }}
+            {{ copy.shareTag }}
           </div>
-          <h1 class="mt-3 text-[2rem] font-black tracking-[-0.06em] text-[var(--ink-strong)] md:text-[2.5rem]">
-            {{ copy.title }}
+          <h1 class="mt-3 text-[2.2rem] font-black tracking-[-0.07em] text-[var(--ink-strong)] md:text-[3rem]">
+            {{ roadmap?.workspace_name || copy.title }}
           </h1>
           <p class="mt-4 max-w-3xl text-sm leading-7 text-[var(--ink-soft)] md:text-base">
             {{ copy.summary }}
@@ -208,6 +208,10 @@ onMounted(() => {
           <Background pattern-color="#e5e7eb" :gap="26" variant="dots" />
           <Controls />
         </VueFlow>
+
+        <div v-if="!loading && roadmap" class="shared-canvas-hint">
+          {{ selectedNode ? selectedNode.title : copy.openCanvas }}
+        </div>
       </div>
     </section>
 
@@ -220,15 +224,19 @@ onMounted(() => {
       class="mx-auto mt-4 max-w-6xl rounded-[32px] border border-[rgba(15,23,42,0.06)] bg-white px-6 py-6 md:px-8"
     >
       <template v-if="selectedNode">
-        <div class="flex flex-wrap gap-2">
-          <span class="admin-chip-warm">{{ typeLabel(selectedNode.node_type) }}</span>
-          <span :class="selectedNode.status === 'completed' ? 'admin-chip-green' : selectedNode.status === 'in_progress' ? 'admin-chip-blue' : 'admin-chip'">
-            {{ statusLabel(selectedNode.status) }}
-          </span>
-        </div>
+        <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap gap-2">
+              <span class="admin-chip-warm">{{ typeLabel(selectedNode.node_type) }}</span>
+              <span :class="selectedNode.status === 'completed' ? 'admin-chip-green' : selectedNode.status === 'in_progress' ? 'admin-chip-blue' : 'admin-chip'">
+                {{ statusLabel(selectedNode.status) }}
+              </span>
+            </div>
 
-        <h2 class="mt-4 text-3xl font-bold tracking-[-0.04em] text-[var(--ink-strong)]">{{ selectedNode.title }}</h2>
-        <p class="mt-3 max-w-3xl text-base leading-8 text-[var(--ink-soft)]">{{ selectedNode.description || copy.noDescription }}</p>
+            <h2 class="mt-4 text-3xl font-bold tracking-[-0.04em] text-[var(--ink-strong)]">{{ selectedNode.title }}</h2>
+            <p class="mt-3 max-w-3xl text-base leading-8 text-[var(--ink-soft)]">{{ selectedNode.description || copy.noDescription }}</p>
+          </div>
+        </div>
 
         <div class="mt-8 text-sm font-semibold text-[var(--ink-main)]">{{ copy.notesTitle }}</div>
 
@@ -239,7 +247,7 @@ onMounted(() => {
               v-for="note in notes"
               :key="note.id"
               type="button"
-              class="admin-list-card block w-full text-left"
+              class="admin-list-card shared-note-card block w-full text-left"
               :class="selectedNote?.id === note.id ? 'border-[rgba(229,106,43,0.24)] bg-[rgba(255,250,242,0.92)]' : ''"
               @click="selectedNoteId = note.id"
             >
@@ -248,10 +256,8 @@ onMounted(() => {
             </button>
           </div>
 
-          <article v-if="selectedNote" class="rounded-[24px] border border-[rgba(15,23,42,0.08)] bg-[rgba(247,247,245,0.88)] p-6">
-            <div class="text-sm font-semibold text-[var(--ink-soft)]">{{ copy.noteContentTitle }}</div>
+          <article v-if="selectedNote" class="shared-note-content">
             <div class="mt-3 text-2xl font-bold tracking-[-0.04em] text-[var(--ink-strong)]">{{ selectedNote.title }}</div>
-            <p class="mt-3 text-sm font-semibold text-[var(--brand-deep)]">{{ copy.notePreview }}</p>
             <p class="mt-5 whitespace-pre-wrap text-sm leading-8 text-[var(--ink-main)]">{{ selectedNote.content }}</p>
           </article>
         </div>
@@ -267,9 +273,14 @@ onMounted(() => {
           <div class="text-2xl font-bold tracking-[-0.04em]">{{ copy.registerTitle }}</div>
           <p class="mt-3 text-sm leading-7 text-[rgba(255,255,255,0.68)]">{{ copy.registerSummary }}</p>
         </div>
-        <button class="product-button-primary" type="button" @click="router.push('/register')">
-          {{ copy.registerAction }}
-        </button>
+        <div class="flex flex-wrap gap-3">
+          <button class="product-button-secondary" type="button" @click="router.push('/login')">
+            {{ copy.loginAction }}
+          </button>
+          <button class="product-button-primary" type="button" @click="router.push('/register')">
+            {{ copy.registerAction }}
+          </button>
+        </div>
       </div>
     </section>
   </div>
@@ -291,9 +302,36 @@ onMounted(() => {
 }
 
 .shared-canvas-shell {
+  position: relative;
   height: calc(100vh - 188px);
   min-height: 620px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 247, 245, 0.94));
+}
+
+.shared-canvas-hint {
+  position: absolute;
+  left: 22px;
+  top: 22px;
+  z-index: 5;
+  pointer-events: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 10px 14px;
+  color: var(--ink-main);
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.shared-note-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(250, 250, 248, 0.96));
+}
+
+.shared-note-content {
+  border-radius: 24px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(247, 247, 245, 0.88);
+  padding: 24px;
 }
 
 :deep(.share-node) {
