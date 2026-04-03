@@ -25,8 +25,8 @@ const copy = computed(() =>
   localeStore.isChinese
     ? {
         badge: `${BRAND.name} 注册`,
-        title: '创建账号，开始你的第一条路线图',
-        summary: '注册后直接进入产品，把目标拆成节点，再把过程沉淀成笔记。',
+        title: '创建账号，直接开始整理路线图',
+        summary: '注册后直接进入产品，把目标拆成节点，再把过程沉淀成内容。',
         username: '用户名',
         usernamePlaceholder: 'team-operator',
         email: '邮箱',
@@ -37,11 +37,11 @@ const copy = computed(() =>
         confirmPlaceholder: '再输入一次密码',
         submit: '创建账号',
         submitting: '创建中...',
-        sideTitle: '注册后你会得到',
+        sideTitle: '创建后第一步',
         sideCards: [
-          { title: '一张路线图', body: '把复杂任务直接画成一条清晰路径。' },
-          { title: '一组关联笔记', body: '方法、结论和过程都挂在节点下面。' },
-          { title: '一个可协作空间', body: '后面可以把别人拉进来一起推进。' },
+          { title: '先画主线', body: '把复杂任务先整理成一条清晰路径。' },
+          { title: '再补节点内容', body: '方法、结论和过程都挂在对应节点下面。' },
+          { title: '需要时再邀请别人', body: '先自己跑顺，再把协作者拉进来。' },
         ],
         loginLead: '已经有账号？',
         loginAction: '去登录',
@@ -50,8 +50,8 @@ const copy = computed(() =>
       }
     : {
         badge: `${BRAND.name} Register`,
-        title: 'Create your first roadmap',
-        summary: 'Sign up and start turning goals into nodes and notes right away.',
+        title: 'Create an account and start with the roadmap',
+        summary: 'Sign up and begin turning goals into nodes and connected content right away.',
         username: 'Username',
         usernamePlaceholder: 'team-operator',
         email: 'Email',
@@ -62,11 +62,11 @@ const copy = computed(() =>
         confirmPlaceholder: 'Enter password again',
         submit: 'Create account',
         submitting: 'Creating...',
-        sideTitle: 'After sign-up you get',
+        sideTitle: 'What happens first',
         sideCards: [
-          { title: 'A clear roadmap', body: 'Turn a complex task into one visible path.' },
-          { title: 'Linked notes', body: 'Keep methods, findings, and decisions under each node.' },
-          { title: 'A shared space', body: 'Invite others later and keep moving together.' },
+          { title: 'Draw the main path', body: 'Turn complex work into one visible roadmap first.' },
+          { title: 'Add content under nodes', body: 'Keep methods, findings, and decisions where they belong.' },
+          { title: 'Invite later when needed', body: 'Get your own flow right before bringing others in.' },
         ],
         loginLead: 'Already have an account?',
         loginAction: 'Sign in',
@@ -182,14 +182,19 @@ const handleRegister = async () => {
             {{ copy.sideTitle }}
           </div>
 
-          <div class="mt-8 space-y-4">
+          <div class="mt-8 space-y-3">
             <article
-              v-for="card in copy.sideCards"
+              v-for="(card, index) in copy.sideCards"
               :key="card.title"
-              class="rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.06)] p-5"
+              class="flex gap-4 rounded-[1.4rem] border border-white/10 bg-[rgba(255,255,255,0.06)] p-4"
             >
-              <h2 class="font-[var(--font-display)] text-2xl font-black tracking-[-0.05em]">{{ card.title }}</h2>
-              <p class="mt-3 text-sm leading-7 text-[rgba(255,255,255,0.68)]">{{ card.body }}</p>
+              <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-black text-white/88">
+                {{ index + 1 }}
+              </span>
+              <div>
+                <h2 class="font-[var(--font-display)] text-xl font-black tracking-[-0.05em]">{{ card.title }}</h2>
+                <p class="mt-2 text-sm leading-7 text-[rgba(255,255,255,0.68)]">{{ card.body }}</p>
+              </div>
             </article>
           </div>
         </div>

@@ -31,14 +31,14 @@ const copy = computed(() =>
         passwordPlaceholder: '输入你的密码',
         submit: '登录',
         submitting: '登录中...',
-        sideTitle: '登录后你会马上看到',
+        sideTitle: '登录后第一眼',
         sideCards: [
-          { title: '完整路径', body: '先看清全局，知道当前推进到哪里。' },
-          { title: '节点细节', body: '点击节点，继续往下看相关笔记。' },
-          { title: '同一空间继续协作', body: '和团队在同一条路径上继续推进。' },
+          { title: '路线图就是首页', body: '不会先看到复杂后台，而是直接看到当前主线。' },
+          { title: '点节点继续看内容', body: '节点下面就是方法、结论和过程。' },
+          { title: '在同一条路径上继续协作', body: '切回工作时，不需要重新找上下文。' },
         ],
-        helperTitle: '进入后先看什么',
-        helperBody: '路线图、当前节点状态，以及节点下面关联的笔记。',
+        helperTitle: '进入后会看到',
+        helperBody: '路线图、当前节点状态，以及节点下面直接接着的内容。',
         registerLead: '还没有账号？',
         registerAction: '创建空间',
         error: '登录失败，请稍后重试',
@@ -53,14 +53,14 @@ const copy = computed(() =>
         passwordPlaceholder: 'Enter your password',
         submit: 'Sign in',
         submitting: 'Signing in...',
-        sideTitle: 'After sign-in you will see',
+        sideTitle: 'What appears first',
         sideCards: [
-          { title: 'The full path', body: 'Understand the current progress at a glance.' },
-          { title: 'Node details', body: 'Click a node and continue into the related notes.' },
-          { title: 'One shared space', body: 'Keep moving with the team on the same path.' },
+          { title: 'The roadmap first', body: 'You land on the path itself, not a dense admin page.' },
+          { title: 'Node content next', body: 'Click a node and continue straight into the details.' },
+          { title: 'Shared context', body: 'Pick up the work without rebuilding context first.' },
         ],
-        helperTitle: 'What appears first',
-        helperBody: 'The roadmap, node status, and the notes connected to each node.',
+        helperTitle: 'After sign-in you get',
+        helperBody: 'The roadmap, current node status, and the content connected to each node.',
         registerLead: 'Need an account?',
         registerAction: 'Create workspace',
         error: 'Unable to sign in right now',
@@ -102,14 +102,19 @@ const handleLogin = async () => {
             {{ copy.sideTitle }}
           </div>
 
-          <div class="mt-8 space-y-4">
+          <div class="mt-8 space-y-3">
             <article
-              v-for="card in copy.sideCards"
+              v-for="(card, index) in copy.sideCards"
               :key="card.title"
-              class="rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.06)] p-5"
+              class="flex gap-4 rounded-[1.4rem] border border-white/10 bg-[rgba(255,255,255,0.06)] p-4"
             >
-              <h2 class="font-[var(--font-display)] text-2xl font-black tracking-[-0.05em]">{{ card.title }}</h2>
-              <p class="mt-3 text-sm leading-7 text-[rgba(255,255,255,0.68)]">{{ card.body }}</p>
+              <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-black text-white/88">
+                {{ index + 1 }}
+              </span>
+              <div>
+                <h2 class="font-[var(--font-display)] text-xl font-black tracking-[-0.05em]">{{ card.title }}</h2>
+                <p class="mt-2 text-sm leading-7 text-[rgba(255,255,255,0.68)]">{{ card.body }}</p>
+              </div>
             </article>
           </div>
         </div>
@@ -150,8 +155,8 @@ const handleLogin = async () => {
             </button>
           </form>
 
-          <div class="product-muted-card mt-6 px-5 py-4">
-            <div class="text-sm font-bold text-[var(--accent)]">{{ copy.helperTitle }}</div>
+          <div class="mt-6 rounded-[1.4rem] bg-[rgba(15,23,42,0.04)] px-5 py-4">
+            <div class="text-sm font-bold text-[var(--ink-strong)]">{{ copy.helperTitle }}</div>
             <p class="mt-2 text-sm leading-7 text-[var(--ink-soft)]">{{ copy.helperBody }}</p>
           </div>
 

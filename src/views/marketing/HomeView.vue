@@ -199,53 +199,27 @@ const copy = computed(() =>
               </div>
             </div>
 
-            <div class="mt-5 grid gap-4 md:grid-cols-[1.05fr_0.95fr]">
-              <div class="rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.06)] p-5">
-                <div class="text-[11px] font-semibold tracking-[0.08em] text-[rgba(255,255,255,0.56)]">
-                  {{ copy.noteTitle }}
-                </div>
-                <div class="mt-4 rounded-[1.3rem] border border-white/10 bg-[rgba(255,255,255,0.06)] px-4 py-4">
-                  <div class="text-sm font-semibold text-white/92">
-                    {{ copy.previewSteps[1] }}
-                  </div>
-                  <p class="mt-2 text-sm leading-7 text-[rgba(255,255,255,0.68)]">
-                    {{ copy.noteSummary }}
-                  </p>
-                </div>
+            <div class="mt-5 rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.06)] p-5">
+              <div class="text-[11px] font-semibold tracking-[0.08em] text-[rgba(255,255,255,0.56)]">
+                {{ copy.pathTitle }}
               </div>
-
-              <div class="rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.06)] p-5">
-                <div class="text-[11px] font-semibold tracking-[0.08em] text-[rgba(255,255,255,0.56)]">
-                  {{ copy.pathTitle }}
-                </div>
-                <div class="mt-4 space-y-3">
-                  <div
-                    v-for="step in copy.previewSteps"
-                    :key="step"
-                    class="rounded-[1.2rem] border border-white/10 bg-[rgba(255,255,255,0.06)] px-4 py-3 text-sm font-semibold leading-6 text-[rgba(255,255,255,0.78)]"
-                  >
+              <div class="mt-4 space-y-3">
+                <div
+                  v-for="(step, index) in copy.previewSteps"
+                  :key="step"
+                  class="flex items-center gap-3 rounded-[1.2rem] border border-white/10 bg-[rgba(255,255,255,0.06)] px-4 py-3"
+                >
+                  <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-black text-white/88">
+                    {{ index + 1 }}
+                  </span>
+                  <span class="text-sm font-semibold leading-6 text-[rgba(255,255,255,0.78)]">
                     {{ step }}
-                  </div>
+                  </span>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </section>
-
-    <section class="product-shell py-10 md:py-14">
-      <div class="max-w-3xl">
-        <h2 class="product-section-title mt-7">{{ copy.valueTitle }}</h2>
-      </div>
-
-      <div class="mt-10 grid gap-5 md:grid-cols-3">
-        <article v-for="item in copy.values" :key="item.title" class="product-panel rounded-[2rem] p-7">
-          <h3 class="font-[var(--font-display)] text-2xl font-black tracking-[-0.05em] text-[var(--ink-strong)]">
-            {{ item.title }}
-          </h3>
-          <p class="mt-4 text-sm leading-7 text-[var(--ink-soft)]">{{ item.description }}</p>
-        </article>
       </div>
     </section>
 
