@@ -27,18 +27,17 @@ const copy = computed(() =>
   localeStore.isChinese
     ? {
         eyebrow: '笔记',
-        title: '把方法、结论和过程留在节点下面',
-        summaryPrefix: '这些笔记属于',
-        summarySuffix: '空间，用来承接路线图下的实际内容。',
+        title: '把真正有用的内容留在节点下面',
+        summaryPrefix: '当前内容属于',
+        summarySuffix: '空间，按节点沉淀，方便从路线图直接进入细节。',
         writable: '可编辑',
         readonly: '只读',
         newNote: '新建笔记',
         readonlyHint: '你可以查看笔记，但只有所有者、管理员和成员可以创建或修改。',
-        filtersTitle: '筛选',
         searchPlaceholder: '搜索标题、摘要或正文内容',
         allNodes: '全部节点',
-        resultCount: '当前结果',
-        noSummary: '还没有摘要',
+        resultCount: '笔记',
+        noSummary: '还没有摘要，打开后继续补充。',
         noResults: '当前条件下还没有匹配笔记。',
         loading: '正在加载笔记...',
         deleteTitle: '确认删除这条笔记吗？',
@@ -54,21 +53,23 @@ const copy = computed(() =>
         open: '查看',
         edit: '编辑',
         delete: '删除',
+        openRoadmap: '进入路线图',
+        emptyTitle: '还没有笔记',
+        emptyCopy: '先从关键节点开始，把结论、方法和过程记下来。',
       }
     : {
         eyebrow: 'Notes',
-        title: 'Keep methods, findings, and records under the right nodes',
+        title: 'Keep the useful details under the right nodes',
         summaryPrefix: 'These notes belong to',
-        summarySuffix: 'workspace and hold the real content behind the roadmap.',
+        summarySuffix: 'workspace and stay attached to the roadmap nodes.',
         writable: 'Editable',
         readonly: 'Read only',
         newNote: 'New note',
         readonlyHint: 'You can review notes, but only owners, admins, and members can create or update them.',
-        filtersTitle: 'Filters',
         searchPlaceholder: 'Search title, summary, or content',
         allNodes: 'All nodes',
-        resultCount: 'Results',
-        noSummary: 'No summary yet',
+        resultCount: 'Notes',
+        noSummary: 'No summary yet. Open it to continue.',
         noResults: 'No notes match the current filters.',
         loading: 'Loading notes...',
         deleteTitle: 'Delete this note?',
@@ -84,11 +85,18 @@ const copy = computed(() =>
         open: 'Open',
         edit: 'Edit',
         delete: 'Delete',
+        openRoadmap: 'Open roadmap',
+        emptyTitle: 'No notes yet',
+        emptyCopy: 'Start with the key nodes and capture the method, finding, or decision.',
       }
 )
 
 const currentWorkspaceName = computed(() => authStore.activeWorkspace?.workspace_name ?? copy.value.workspaceFallback)
 const hasWriteAccess = computed(() => authStore.hasWriteAccess)
+const selectedNodeLabel = computed(() => {
+  if (selectedNodeId.value === 'all') return copy.value.allNodes
+  return nodes.value.find((node) => String(node.id) === selectedNodeId.value)?.title || copy.value.unknownNode
+})
 
 const buildFilters = (): NoteListFilters => {
   const filters: NoteListFilters = {}
@@ -180,7 +188,10 @@ const editNote = (id: number) => router.push(`/admin/note/edit/${id}`)
 
 const createNote = () => {
   if (!hasWriteAccess.value) return
-  router.push('/admin/note/create')
+  router.push({
+    path: '/admin/note/create',
+    query: selectedNodeId.value !== 'all' ? { nodeId: selectedNodeId.value } : {},
+  })
 }
 
 const triggerDelete = (note: Note) => {
@@ -214,6 +225,12 @@ const confirmDelete = async () => {
           <span class="font-semibold text-[var(--ink-strong)]">{{ currentWorkspaceName }}</span>
           {{ copy.summarySuffix }}
         </p>
+
+        <div class="mt-5 flex flex-wrap gap-2">
+          <span class="admin-chip-dark">{{ currentWorkspaceName }}</span>
+          <span class="admin-chip">{{ selectedNodeLabel }}</span>
+          <span class="admin-chip">{{ copy.resultCount }} {{ notes.length }}</span>
+        </div>
       </div>
 
       <div class="flex flex-wrap items-center gap-3">
@@ -234,17 +251,8 @@ const confirmDelete = async () => {
       {{ errorMessage }}
     </div>
 
-    <section class="admin-card mt-6 p-5">
-      <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div class="text-sm font-semibold text-[var(--ink-main)]">
-          {{ copy.filtersTitle }}
-        </div>
-        <div class="admin-chip">
-          {{ copy.resultCount }} {{ notes.length }}
-        </div>
-      </div>
-
-      <div class="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_240px]">
+    <section class="admin-toolbar mt-6">
+      <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_240px]">
         <input v-model="searchTerm" type="text" class="admin-input" :placeholder="copy.searchPlaceholder" />
         <select v-model="selectedNodeId" class="admin-select">
           <option value="all">{{ copy.allNodes }}</option>
@@ -259,10 +267,10 @@ const confirmDelete = async () => {
       {{ copy.loading }}
     </div>
 
-    <section v-else-if="notes.length > 0" class="mt-6 grid gap-4 xl:grid-cols-2">
-      <article v-for="note in notes" :key="note.id" class="admin-card p-5">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div class="flex flex-wrap gap-2">
+    <section v-else-if="notes.length > 0" class="note-grid mt-6">
+      <article v-for="note in notes" :key="note.id" class="admin-list-card note-card">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div class="flex min-w-0 flex-wrap gap-2">
             <span class="admin-chip-warm">{{ getNodeTitle(note.node_id) }}</span>
             <span class="admin-chip">{{ new Date(note.created_at).toLocaleDateString(localeStore.locale) }}</span>
           </div>
@@ -278,14 +286,28 @@ const confirmDelete = async () => {
           </div>
         </div>
 
-        <div class="mt-4 text-xl font-semibold tracking-[-0.03em] text-[var(--ink-strong)]">{{ note.title }}</div>
-        <p class="mt-3 text-sm leading-7 text-[var(--ink-soft)]">{{ note.summary || copy.noSummary }}</p>
+        <div class="mt-5 text-[1.35rem] font-semibold tracking-[-0.04em] text-[var(--ink-strong)]">{{ note.title }}</div>
+        <p class="mt-3 line-clamp-4 text-sm leading-7 text-[var(--ink-soft)]">{{ note.summary || copy.noSummary }}</p>
       </article>
     </section>
 
-    <div v-else class="admin-empty mt-6">
-      {{ copy.noResults }}
-    </div>
+    <section v-else class="admin-card mt-6 px-6 py-8 text-center">
+      <div class="mx-auto max-w-xl">
+        <div class="text-xl font-semibold tracking-[-0.03em] text-[var(--ink-strong)]">{{ copy.emptyTitle }}</div>
+        <p class="mt-3 text-sm leading-7 text-[var(--ink-soft)]">
+          {{ searchTerm || selectedNodeId !== 'all' ? copy.noResults : copy.emptyCopy }}
+        </p>
+
+        <div class="mt-6 flex flex-wrap justify-center gap-3">
+          <button v-if="hasWriteAccess" class="product-button-dark" type="button" @click="createNote">
+            {{ copy.newNote }}
+          </button>
+          <button class="product-button-secondary" type="button" @click="router.push('/admin/roadmap')">
+            {{ copy.openRoadmap }}
+          </button>
+        </div>
+      </div>
+    </section>
 
     <Teleport to="body">
       <Transition name="modal">
@@ -310,3 +332,21 @@ const confirmDelete = async () => {
     </Teleport>
   </div>
 </template>
+
+<style scoped>
+.note-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.note-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(250, 250, 248, 0.96));
+  padding: 22px;
+}
+
+@media (min-width: 1280px) {
+  .note-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+</style>

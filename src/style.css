@@ -816,8 +816,8 @@
 
   .admin-page {
     margin: 0 auto;
-    width: min(100%, 1260px);
-    padding: 24px 24px 36px;
+    width: min(100%, 1320px);
+    padding: 20px 20px 32px;
   }
 
   .admin-kicker {
@@ -847,8 +847,8 @@
   .admin-card-soft,
   .admin-card-muted {
     border: 1px solid rgba(15, 23, 42, 0.08);
-    border-radius: 24px;
-    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.03);
+    border-radius: 22px;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.025);
   }
 
   .admin-card {
@@ -891,10 +891,10 @@
 
   .admin-kpi-card {
     border: 1px solid rgba(15, 23, 42, 0.08);
-    border-radius: 20px;
+    border-radius: 18px;
     background: rgba(255, 255, 255, 0.92);
-    padding: 16px 18px;
-    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.025);
+    padding: 15px 16px;
+    box-shadow: 0 5px 12px rgba(15, 23, 42, 0.02);
   }
 
   .admin-kpi-label {
@@ -981,15 +981,15 @@
 
   .admin-toolbar {
     border: 1px solid rgba(15, 23, 42, 0.08);
-    border-radius: 24px;
+    border-radius: 20px;
     background: rgba(255, 255, 255, 0.92);
-    padding: 18px 20px;
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.035);
+    padding: 16px 18px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.03);
   }
 
   .admin-list-card {
     border: 1px solid rgba(15, 23, 42, 0.08);
-    border-radius: 20px;
+    border-radius: 18px;
     background: rgba(255, 255, 255, 0.94);
     padding: 18px;
     transition:
@@ -1005,9 +1005,9 @@
 
   .admin-empty {
     border: 1px dashed rgba(15, 23, 42, 0.12);
-    border-radius: 24px;
+    border-radius: 20px;
     background: rgba(255, 255, 255, 0.68);
-    padding: 48px 24px;
+    padding: 40px 22px;
     color: var(--ink-soft);
     text-align: center;
     font-size: 14px;
@@ -1016,9 +1016,9 @@
 
   .admin-sidebar-card {
     border: 1px solid rgba(15, 23, 42, 0.08);
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.86);
-    padding: 12px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.82);
+    padding: 11px;
   }
 
   .admin-sidebar-label {
@@ -1034,8 +1034,8 @@
     align-items: center;
     gap: 12px;
     border: 1px solid transparent;
-    border-radius: 16px;
-    padding: 9px 10px;
+    border-radius: 14px;
+    padding: 8px 9px;
     color: var(--ink-main);
     transition:
       background-color 160ms ease,
@@ -1059,15 +1059,15 @@
 
   .admin-nav-icon {
     display: inline-flex;
-    height: 30px;
-    width: 30px;
+    height: 28px;
+    width: 28px;
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    border-radius: 10px;
+    border-radius: 9px;
     background: rgba(15, 23, 42, 0.05);
     color: var(--ink-main);
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 800;
   }
 
