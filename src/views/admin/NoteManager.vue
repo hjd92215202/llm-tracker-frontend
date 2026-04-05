@@ -93,6 +93,7 @@ const copy = computed(() =>
 
 const currentWorkspaceName = computed(() => authStore.activeWorkspace?.workspace_name ?? copy.value.workspaceFallback)
 const hasWriteAccess = computed(() => authStore.hasWriteAccess)
+const openRoadmapActionLabel = computed(() => (localeStore.isChinese ? '进入路线图' : 'Open roadmap'))
 const selectedNodeLabel = computed(() => {
   if (selectedNodeId.value === 'all') return copy.value.allNodes
   return nodes.value.find((node) => String(node.id) === selectedNodeId.value)?.title || copy.value.unknownNode
@@ -237,6 +238,9 @@ const confirmDelete = async () => {
         <span :class="hasWriteAccess ? 'admin-chip-dark' : 'admin-chip'">
           {{ hasWriteAccess ? copy.writable : copy.readonly }}
         </span>
+        <button class="product-button-secondary" type="button" @click="router.push('/roadmap')">
+          {{ openRoadmapActionLabel }}
+        </button>
         <button v-if="hasWriteAccess" class="product-button-dark" type="button" @click="createNote">
           {{ copy.newNote }}
         </button>
@@ -305,9 +309,9 @@ const confirmDelete = async () => {
           <button
             class="product-button-secondary"
             type="button"
-            @click="router.push(hasWriteAccess ? '/admin/roadmap' : '/roadmap')"
+            @click="router.push('/roadmap')"
           >
-            {{ copy.openRoadmap }}
+            {{ openRoadmapActionLabel }}
           </button>
         </div>
       </div>

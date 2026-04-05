@@ -99,7 +99,7 @@ const editNote = () => {
 <template>
   <div class="min-h-screen bg-[linear-gradient(180deg,#fafaf8_0%,#f4f6f8_100%)]">
     <div class="sticky top-0 z-20 border-b border-[rgba(15,23,42,0.08)] bg-[rgba(255,255,255,0.72)] backdrop-blur">
-      <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
+      <div class="mx-auto flex max-w-[92rem] items-center justify-between gap-4 px-6 py-4">
         <button class="product-button-secondary !px-5 !py-3" type="button" @click="goBack">{{ copy.back }}</button>
         <button v-if="canEdit" class="product-button-dark !px-5 !py-3" type="button" @click="editNote">
           {{ copy.edit }}
@@ -115,7 +115,7 @@ const editNote = () => {
       <div class="product-error px-6 py-5 text-sm font-semibold">{{ errorMessage }}</div>
     </div>
 
-    <div v-else-if="note" class="mx-auto max-w-6xl px-6 py-8">
+    <div v-else-if="note" class="mx-auto max-w-[92rem] px-6 py-8">
       <section class="rounded-[2rem] border border-[rgba(15,23,42,0.08)] bg-[rgba(255,255,255,0.8)] p-7 shadow-[0_18px_50px_rgba(20,33,43,0.05)] md:p-8">
         <div class="flex flex-wrap gap-2">
           <span class="admin-chip-warm">{{ currentNodeTitle }}</span>
@@ -141,7 +141,7 @@ const editNote = () => {
         </div>
       </section>
 
-      <div class="mt-6 grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
+      <div class="mt-6 grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)]">
         <aside class="note-detail-sidebar space-y-6">
           <section class="rounded-[1.8rem] border border-[rgba(15,23,42,0.08)] bg-[rgba(255,255,255,0.82)] p-5 shadow-[0_14px_36px_rgba(20,33,43,0.04)]">
             <div class="text-[11px] font-black uppercase tracking-[0.24em] text-[var(--brand)]">{{ copy.outline }}</div>
@@ -201,10 +201,17 @@ const editNote = () => {
 
 :deep(.md-editor-preview) {
   padding-top: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
   font-family: var(--font-sans);
   font-size: 1rem;
   line-height: 1.95;
   color: var(--ink-main);
+}
+
+:deep(.md-editor-preview-wrapper) {
+  width: 100% !important;
+  max-width: none !important;
 }
 
 :deep(.md-editor-preview h1),

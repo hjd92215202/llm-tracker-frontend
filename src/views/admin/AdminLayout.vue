@@ -26,10 +26,10 @@ const copy = computed(() =>
         collapse: '收起导航',
         expand: '展开导航',
         nav: [
+          { to: '/admin/dashboard', short: '览', label: '总览' },
           { to: '/admin/roadmap', short: '编', label: '编辑' },
           { to: '/admin/notes', short: '记', label: '笔记' },
           { to: '/admin/workspace', short: '员', label: '成员管理' },
-          { to: '/admin/dashboard', short: '览', label: '总览' },
         ],
       }
     : {
@@ -42,10 +42,10 @@ const copy = computed(() =>
         collapse: 'Collapse navigation',
         expand: 'Expand navigation',
         nav: [
+          { to: '/admin/dashboard', short: 'OV', label: 'Overview' },
           { to: '/admin/roadmap', short: 'ED', label: 'Edit' },
           { to: '/admin/notes', short: 'NT', label: 'Notes' },
           { to: '/admin/workspace', short: 'MB', label: 'Members' },
-          { to: '/admin/dashboard', short: 'OV', label: 'Overview' },
         ],
       },
 )
@@ -206,19 +206,9 @@ onBeforeUnmount(() => {
               class="admin-nav-link"
               active-class="admin-nav-link-active"
             >
-              <span class="admin-nav-icon">
-                {{
-                  item.to === '/admin/roadmap'
-                    ? item.short
-                    : item.short
-                }}
-              </span>
+              <span class="admin-nav-icon">{{ item.short }}</span>
               <div v-if="!isCollapsed" class="min-w-0 text-sm font-semibold">
-                {{
-                  item.to === '/admin/roadmap'
-                    ? item.label
-                    : item.label
-                }}
+                {{ item.label }}
               </div>
             </router-link>
           </nav>

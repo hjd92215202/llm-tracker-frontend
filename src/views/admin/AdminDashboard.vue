@@ -19,7 +19,8 @@ const copy = computed(() =>
     ? {
         kicker: '总览',
         title: '把当前空间继续往前推',
-        summary: '这里只保留现在最该看的东西：节点、笔记、完成度和下一步动作。',
+        summary: '这里只保留现在最该看的东西：节点、笔记、完成度和关键入口。',
+        roadmapAction: '进入路线图',
         primaryAction: authStore.hasWriteAccess ? '进入编辑台' : '查看路线图',
         secondaryAction: authStore.hasWriteAccess ? '进入笔记' : '查看笔记',
         role: '当前角色',
@@ -30,16 +31,12 @@ const copy = computed(() =>
           notes: '笔记',
           completion: '完成度',
         },
-        quickLinks: '快速动作',
         recentTitle: '最近笔记',
         noWorkspace: '当前没有可用空间。',
         loading: '正在加载总览...',
         errorFallback: '加载总览失败',
         noSummary: '这条笔记还没有摘要。',
         noNotes: '还没有笔记，先把关键过程记下来。',
-        completed: '已完成',
-        inProgress: '进行中',
-        pending: '待开始',
         teamRoles: {
           owner: '所有者',
           admin: '管理员',
@@ -50,7 +47,8 @@ const copy = computed(() =>
     : {
         kicker: 'Overview',
         title: 'Keep this workspace moving',
-        summary: 'Show only the signals that matter right now: nodes, notes, completion, and the next action.',
+        summary: 'Show only the signals that matter right now: nodes, notes, completion, and the core entry points.',
+        roadmapAction: 'Open roadmap',
         primaryAction: authStore.hasWriteAccess ? 'Open editor' : 'View roadmap',
         secondaryAction: authStore.hasWriteAccess ? 'Open notes' : 'View notes',
         role: 'Current role',
@@ -61,16 +59,12 @@ const copy = computed(() =>
           notes: 'Notes',
           completion: 'Completion',
         },
-        quickLinks: 'Quick links',
         recentTitle: 'Recent notes',
         noWorkspace: 'There is no active workspace.',
         loading: 'Loading overview...',
         errorFallback: 'Unable to load overview',
         noSummary: 'This note does not have a summary yet.',
         noNotes: 'No notes yet. Start capturing the work.',
-        completed: 'Completed',
-        inProgress: 'In progress',
-        pending: 'Todo',
         teamRoles: {
           owner: 'Owner',
           admin: 'Admin',
@@ -104,20 +98,6 @@ const currentRole = computed(
   () => roleLabelMap.value[(currentWorkspace.value?.role ?? authStore.activeRole ?? 'viewer') as WorkspaceRole],
 )
 const membersTotal = computed(() => overview.value?.team.role_counts ? metrics.value?.members_total ?? 0 : 0)
-
-const suggestedNextMove = computed(() => {
-  if (!metrics.value) return ''
-  if (metrics.value.roadmap_total === 0) {
-    return localeStore.isChinese ? '先把路线图主线画出来。' : 'Draw the main roadmap path first.'
-  }
-  if (metrics.value.notes_total < Math.min(metrics.value.roadmap_total, 3)) {
-    return localeStore.isChinese ? '把正在推进节点对应的笔记补齐。' : 'Capture notes for the active roadmap nodes.'
-  }
-  if (metrics.value.members_total <= 1) {
-    return localeStore.isChinese ? '邀请协作者加入，一起推进。' : 'Invite collaborators so the work can move together.'
-  }
-  return localeStore.isChinese ? '路线和笔记都在形成，继续稳定推进。' : 'The path and knowledge base are forming. Keep it moving.'
-})
 
 const fetchOverview = async () => {
   if (!authStore.activeWorkspaceId) {
@@ -183,6 +163,9 @@ watch(
           </div>
 
           <div class="flex flex-wrap gap-3">
+            <button class="product-button-secondary" type="button" @click="router.push('/roadmap')">
+              {{ copy.roadmapAction }}
+            </button>
             <button
               class="product-button-dark"
               type="button"
@@ -214,39 +197,6 @@ watch(
           <div class="admin-kpi-label">{{ copy.metrics.completion }}</div>
           <div class="admin-kpi-value">{{ metrics?.completion_rate ?? 0 }}%</div>
         </article>
-      </section>
-
-      <section class="admin-card mt-6 p-6">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div class="admin-card-title">{{ copy.quickLinks }}</div>
-            <p class="mt-3 text-sm leading-7 text-[var(--ink-soft)]">{{ suggestedNextMove }}</p>
-          </div>
-          <div class="text-sm font-semibold text-[var(--ink-main)]">
-            {{ metrics?.roadmap_completed ?? 0 }} {{ copy.completed }} / {{ metrics?.roadmap_todo ?? 0 }} {{ copy.pending }}
-          </div>
-        </div>
-
-        <div class="mt-5 flex flex-wrap gap-3">
-          <button
-            class="product-button-dark"
-            type="button"
-            @click="router.push(authStore.hasWriteAccess ? '/admin/roadmap' : '/roadmap')"
-          >
-            {{ copy.primaryAction }}
-          </button>
-          <button class="product-button-secondary" type="button" @click="router.push('/admin/notes')">
-            {{ copy.secondaryAction }}
-          </button>
-          <button
-            v-if="authStore.canManageMembers"
-            class="product-button-secondary"
-            type="button"
-            @click="router.push('/admin/workspace')"
-          >
-            {{ localeStore.isChinese ? '管理成员' : 'Manage members' }}
-          </button>
-        </div>
       </section>
 
       <section class="mt-6">

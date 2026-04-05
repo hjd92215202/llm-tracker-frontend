@@ -3,7 +3,6 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import StatusChip from '@/components/ui/StatusChip.vue'
 import InlineEditableField from '@/components/ui/InlineEditableField.vue'
-import { workspaceApi } from '@/api/workspace'
 import { useAuthStore } from '@/store/auth'
 import { useLocaleStore } from '@/store/locale'
 import { useRoadmapStore } from '@/store/roadmap'
@@ -23,7 +22,6 @@ const authStore = useAuthStore()
 const localeStore = useLocaleStore()
 const roadmapStore = useRoadmapStore()
 
-const shareMessage = ref('')
 const isDeleteConfirmOpen = ref(false)
 const errorMessage = ref('')
 const structureErrorMessage = ref('')
@@ -119,9 +117,7 @@ const copy = computed(() =>
       }
     : {
         title: 'Node manager',
-        summary: 'Create nodes, reshape structure, and copy the share link.',
-        share: 'Copy share link',
-        shareDone: 'Link copied',
+        summary: 'Create nodes, reshape structure, and keep the path clear.',
         addNode: 'Add root node',
         addChild: 'Add child node',
         addSibling: 'Add sibling node',
@@ -188,6 +184,7 @@ const pageSummary = computed(() =>
 const shortcutSummary = computed(() =>
   localeStore.isChinese ? '快捷键：N 新建节点，Alt + 方向键 调整路径' : 'Shortcuts: N new node, Alt + Arrow to reshape',
 )
+const openRoadmapActionLabel = computed(() => (localeStore.isChinese ? '进入路线图' : 'Open roadmap'))
 const detailEmptyTitle = computed(() => (localeStore.isChinese ? '先从左侧选一个节点' : 'Select a node from the left'))
 const detailEmptyCopy = computed(() =>
   localeStore.isChinese
@@ -335,22 +332,6 @@ const createDraftNode = async () => {
   } catch (error: any) {
     errorMessage.value = error.message || copy.value.createError
   }
-}
-
-const copyShareLink = async () => {
-  if (!authStore.activeWorkspaceId || !hasNodes.value) return
-
-  try {
-    const share = await workspaceApi.createShareLink(authStore.activeWorkspaceId)
-    await navigator.clipboard.writeText(`${window.location.origin}${share.share_url}`)
-    shareMessage.value = copy.value.shareDone
-  } catch {
-    shareMessage.value = copy.value.loadError
-  }
-
-  window.setTimeout(() => {
-    shareMessage.value = ''
-  }, 2200)
 }
 
 const persistNodePatch = async (
@@ -596,13 +577,9 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="flex flex-wrap items-center gap-3">
+            <button class="product-button-secondary" type="button" @click="router.push('/roadmap')">{{ openRoadmapActionLabel }}</button>
             <button v-if="hasWriteAccess" class="product-button-dark" type="button" @click="openDraft('root')">{{ copy.addNode }}</button>
-            <button v-if="hasNodes" class="product-button-secondary" type="button" @click="copyShareLink">{{ copy.share }}</button>
           </div>
-        </div>
-
-        <div v-if="shareMessage" class="mt-4 inline-flex rounded-full bg-[rgba(15,23,42,0.06)] px-4 py-2 text-sm font-semibold text-[var(--ink-main)]">
-          {{ shareMessage }}
         </div>
       </section>
 
