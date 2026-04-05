@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Background } from '@vue-flow/background'
 import { VueFlow } from '@vue-flow/core'
 import { ArrowUp, ArrowUpRight } from 'lucide-vue-next'
+import RoadmapSmartEdge from '@/components/roadmap/RoadmapSmartEdge.vue'
 import RoadmapHeroHeader from '@/components/roadmap/RoadmapHeroHeader.vue'
 import { workspaceApi } from '@/api/workspace'
 import { useLocaleStore } from '@/store/locale'
@@ -147,10 +148,13 @@ const flowEdges = computed(() =>
       source: String(node.parent_id),
       target: String(node.id),
       animated: node.status === 'in_progress',
-      type: 'smoothstep',
-      style: { stroke: '#d7dce2', strokeWidth: 2.1 },
+      type: 'roadmap-smart',
+      style: { stroke: '#d2d9e0', strokeWidth: 1.9 },
     })),
 )
+const edgeTypes = {
+  'roadmap-smart': RoadmapSmartEdge,
+}
 
 const typeLabel = (type: RoadmapNode['node_type']) => {
   if (type === 'coding') return copy.value.coding
@@ -332,6 +336,7 @@ onUnmounted(() => {
           class="h-full w-full bg-transparent"
           :nodes="flowNodes"
           :edges="flowEdges"
+          :edge-types="edgeTypes"
           fit-view-on-init
           :fit-view-on-init-options="{ padding: 0.42, minZoom: 0.48, maxZoom: 1.1, duration: 360 }"
           :min-zoom="0.48"

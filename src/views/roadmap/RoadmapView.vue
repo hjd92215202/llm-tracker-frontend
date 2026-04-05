@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Background } from '@vue-flow/background'
 import { VueFlow } from '@vue-flow/core'
 import { ArrowUp, ArrowUpRight } from 'lucide-vue-next'
+import InlineEditableField from '@/components/ui/InlineEditableField.vue'
+import RoadmapSmartEdge from '@/components/roadmap/RoadmapSmartEdge.vue'
 import RoadmapHeroHeader from '@/components/roadmap/RoadmapHeroHeader.vue'
 import { noteApi } from '@/api/note'
 import { roadmapApi } from '@/api/roadmap'
@@ -11,7 +13,7 @@ import { workspaceApi } from '@/api/workspace'
 import { useAuthStore } from '@/store/auth'
 import { useLocaleStore } from '@/store/locale'
 import type { Note, RoadmapNode } from '@/types'
-import { buildRoadmapTree, findRoadmapPath, flattenRoadmapTree } from '@/utils/roadmapTree'
+import { buildRoadmapTree, findRoadmapPath, flattenRoadmapTree, getRoadmapNodeMoveState, moveRoadmapNode } from '@/utils/roadmapTree'
 
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
@@ -30,6 +32,26 @@ const loading = ref(false)
 const loadingNotes = ref(false)
 const errorMessage = ref('')
 const shareMessage = ref('')
+const actionMessage = ref('')
+const menuBusyAction = ref<string | null>(null)
+const actionMenuRef = ref<HTMLElement | null>(null)
+const menuAnchorPoint = ref<{ x: number; y: number } | null>(null)
+const canvasMenu = ref<{
+  open: boolean
+  nodeId: number | null
+  x: number
+  y: number
+}>({
+  open: false,
+  nodeId: null,
+  x: 0,
+  y: 0,
+})
+const lastTouchTap = ref<{ nodeId: number; ts: number } | null>(null)
+const MENU_VIEWPORT_PADDING = 12
+const MENU_POINTER_OFFSET = 10
+const MENU_FALLBACK_WIDTH = 220
+const MENU_FALLBACK_HEIGHT = 320
 const presetNodeId = computed(() => {
   const value = Number(route.query.nodeId)
   return Number.isFinite(value) && value > 0 ? value : null
@@ -128,6 +150,39 @@ const roadmapTree = computed(() => buildRoadmapTree(nodes.value))
 const roadmapOutline = computed(() => flattenRoadmapTree(roadmapTree.value))
 const selectedPath = computed(() => findRoadmapPath(roadmapTree.value, selectedNode.value?.id ?? null))
 const breadcrumbLabel = computed(() => (localeStore.isChinese ? '当前路径' : 'Current path'))
+const titlePlaceholder = computed(() => (localeStore.isChinese ? '给这个节点一个清晰标题' : 'Give this node a clear title'))
+const descriptionPlaceholder = computed(() =>
+  localeStore.isChinese ? '补充背景、目标或判断依据，Ctrl/Cmd + Enter 保存' : 'Add context, goal, or rationale. Ctrl/Cmd + Enter saves.',
+)
+const menuCopy = computed(() =>
+  localeStore.isChinese
+    ? {
+        addChild: '新增下级',
+        addSibling: '新增同级',
+        moveEarlier: '前移',
+        moveLater: '后移',
+        moveDeeper: '下沉',
+        moveHigher: '上提',
+        delete: '删除节点',
+        nodeActions: '节点动作',
+        pathTools: '调整路径',
+        status: '状态',
+      }
+    : {
+        addChild: 'Add child',
+        addSibling: 'Add sibling',
+        moveEarlier: 'Earlier',
+        moveLater: 'Later',
+        moveDeeper: 'Deeper',
+        moveHigher: 'Higher',
+        delete: 'Delete node',
+        nodeActions: 'Node actions',
+        pathTools: 'Shape path',
+        status: 'Status',
+      },
+)
+const defaultNewNodeTitle = computed(() => (localeStore.isChinese ? '新节点' : 'New node'))
+const selectedMoveState = computed(() => getRoadmapNodeMoveState(nodes.value, selectedNode.value?.id ?? null))
 
 const updateFloatingTopVisibility = () => {
   if (!selectedNode.value || !pageScrollRef.value) {
@@ -164,10 +219,13 @@ const flowEdges = computed(() =>
       source: String(node.parent_id),
       target: String(node.id),
       animated: node.status === 'in_progress',
-      type: 'smoothstep',
-      style: { stroke: '#d7dce2', strokeWidth: 2.1 },
+      type: 'roadmap-smart',
+      style: { stroke: '#d2d9e0', strokeWidth: 1.9 },
     }))
 )
+const edgeTypes = {
+  'roadmap-smart': RoadmapSmartEdge,
+}
 
 const typeLabel = (type: RoadmapNode['node_type']) => {
   if (type === 'coding') return copy.value.coding
@@ -180,6 +238,110 @@ const statusLabel = (status: RoadmapNode['status']) => {
   if (status === 'in_progress') return copy.value.inProgress
   return copy.value.todo
 }
+
+const sortNodes = (items: RoadmapNode[]) => [...items].sort((left, right) => left.sort_order - right.sort_order || left.id - right.id)
+
+const clearSelectedNode = () => {
+  selectedNode.value = null
+  notes.value = []
+  const nextQuery = { ...route.query, nodeId: undefined }
+  router.replace({ query: nextQuery })
+}
+
+const closeNodeMenu = () => {
+  canvasMenu.value.open = false
+  canvasMenu.value.nodeId = null
+  menuAnchorPoint.value = null
+}
+
+const flashActionMessage = (message: string) => {
+  actionMessage.value = message
+  window.setTimeout(() => {
+    actionMessage.value = ''
+  }, 2200)
+}
+
+const getNodeFromMenu = () => {
+  if (!canvasMenu.value.nodeId) return selectedNode.value
+  return nodes.value.find((node) => node.id === canvasMenu.value.nodeId) ?? selectedNode.value
+}
+
+const getPointerCoordinates = (event: MouseEvent | TouchEvent) => {
+  if ('touches' in event && event.touches.length > 0) {
+    return { x: event.touches[0]!.clientX, y: event.touches[0]!.clientY }
+  }
+
+  if ('changedTouches' in event && event.changedTouches.length > 0) {
+    return { x: event.changedTouches[0]!.clientX, y: event.changedTouches[0]!.clientY }
+  }
+
+  const pointer = event as MouseEvent
+  return { x: pointer.clientX, y: pointer.clientY }
+}
+
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
+
+const resolveMenuPosition = (anchor: { x: number; y: number }, menuWidth: number, menuHeight: number) => {
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+  const maxLeft = Math.max(MENU_VIEWPORT_PADDING, viewportWidth - menuWidth - MENU_VIEWPORT_PADDING)
+  const maxTop = Math.max(MENU_VIEWPORT_PADDING, viewportHeight - menuHeight - MENU_VIEWPORT_PADDING)
+
+  let x = anchor.x + MENU_POINTER_OFFSET
+  if (x + menuWidth + MENU_VIEWPORT_PADDING > viewportWidth) {
+    x = anchor.x - menuWidth - MENU_POINTER_OFFSET
+  }
+
+  let y = anchor.y + MENU_POINTER_OFFSET
+  if (y + menuHeight + MENU_VIEWPORT_PADDING > viewportHeight) {
+    y = anchor.y - menuHeight - MENU_POINTER_OFFSET
+  }
+
+  return {
+    x: clamp(x, MENU_VIEWPORT_PADDING, maxLeft),
+    y: clamp(y, MENU_VIEWPORT_PADDING, maxTop),
+  }
+}
+
+const repositionNodeMenu = async (mode: 'fallback' | 'measure' = 'measure') => {
+  if (!canvasMenu.value.open || !menuAnchorPoint.value) return
+
+  const anchor = menuAnchorPoint.value
+  if (mode === 'fallback') {
+    const fallbackPosition = resolveMenuPosition(anchor, MENU_FALLBACK_WIDTH, MENU_FALLBACK_HEIGHT)
+    canvasMenu.value = { ...canvasMenu.value, ...fallbackPosition }
+  }
+
+  await nextTick()
+  if (!canvasMenu.value.open || !menuAnchorPoint.value) return
+
+  const menuRect = actionMenuRef.value?.getBoundingClientRect()
+  const menuWidth = Math.max(1, menuRect?.width ?? MENU_FALLBACK_WIDTH)
+  const menuHeight = Math.max(1, menuRect?.height ?? MENU_FALLBACK_HEIGHT)
+  const measuredPosition = resolveMenuPosition(menuAnchorPoint.value, menuWidth, menuHeight)
+
+  if (measuredPosition.x !== canvasMenu.value.x || measuredPosition.y !== canvasMenu.value.y) {
+    canvasMenu.value = { ...canvasMenu.value, ...measuredPosition }
+  }
+}
+
+const openNodeMenu = (node: RoadmapNode, event: MouseEvent | TouchEvent) => {
+  if (!authStore.hasWriteAccess) return
+  const pointer = getPointerCoordinates(event)
+  menuAnchorPoint.value = pointer
+
+  canvasMenu.value = {
+    open: true,
+    nodeId: node.id,
+    x: pointer.x,
+    y: pointer.y,
+  }
+
+  void repositionNodeMenu('fallback')
+}
+
+const resolveSiblingSortOrder = (parentId: number | null) =>
+  nodes.value.filter((node) => (node.parent_id ?? null) === parentId).length
 
 const openFirstNode = () => {
   if (!authStore.hasWriteAccess) return
@@ -249,8 +411,157 @@ const selectNode = async (node: RoadmapNode, options?: { autoScroll?: boolean })
   }
 }
 
-const handleNodeClick = async (payload: { node: { data: RoadmapNode } }) => {
-  await selectNode(payload.node.data, { autoScroll: true })
+const persistNodePatch = async (targetId: number, patch: Partial<RoadmapNode>, successMessage: string) => {
+  menuBusyAction.value = 'patch'
+  errorMessage.value = ''
+
+  try {
+    const updated = await roadmapApi.patchNode(targetId, patch)
+    nodes.value = nodes.value.map((node) => (node.id === targetId ? updated : node))
+    if (selectedNode.value?.id === targetId) {
+      selectedNode.value = updated
+    }
+    flashActionMessage(successMessage)
+  } catch (error: any) {
+    errorMessage.value = error.message || copy.value.loadError
+  } finally {
+    menuBusyAction.value = null
+  }
+}
+
+const saveTitle = async (value: string) => {
+  const target = selectedNode.value
+  if (!target || !authStore.hasWriteAccess) return
+  const nextValue = value.trim() || target.title
+  if (nextValue === target.title) return
+  await persistNodePatch(target.id, { title: nextValue }, localeStore.isChinese ? '节点标题已更新' : 'Node title updated')
+}
+
+const saveDescription = async (value: string) => {
+  const target = selectedNode.value
+  if (!target || !authStore.hasWriteAccess) return
+  const nextValue = value.trim()
+  if ((target.description ?? '') === nextValue) return
+  await persistNodePatch(target.id, { description: nextValue || null }, localeStore.isChinese ? '节点说明已更新' : 'Node description updated')
+}
+
+const updateStatus = async (status: RoadmapNode['status']) => {
+  const target = getNodeFromMenu()
+  if (!target || !authStore.hasWriteAccess || target.status === status) return
+  await persistNodePatch(target.id, { status }, localeStore.isChinese ? '节点状态已更新' : 'Node status updated')
+  closeNodeMenu()
+}
+
+const createNodeFromMenu = async (mode: 'child' | 'sibling') => {
+  const anchor = getNodeFromMenu()
+  if (!anchor || !authStore.hasWriteAccess) return
+  const parentId = mode === 'child' ? anchor.id : anchor.parent_id ?? null
+
+  menuBusyAction.value = mode
+  errorMessage.value = ''
+  try {
+    const created = await roadmapApi.createNode({
+      title: defaultNewNodeTitle.value,
+      description: null,
+      node_type: anchor.node_type,
+      parent_id: parentId,
+      sort_order: resolveSiblingSortOrder(parentId),
+    })
+    nodes.value = sortNodes([...nodes.value, created])
+    closeNodeMenu()
+    await selectNode(created, { autoScroll: false })
+    flashActionMessage(mode === 'child' ? (localeStore.isChinese ? '已新增下级节点' : 'Child node created') : (localeStore.isChinese ? '已新增同级节点' : 'Sibling node created'))
+  } catch (error: any) {
+    errorMessage.value = error.message || copy.value.loadError
+  } finally {
+    menuBusyAction.value = null
+  }
+}
+
+const moveSelectedNode = async (direction: 'up' | 'down' | 'indent' | 'outdent') => {
+  const target = getNodeFromMenu()
+  if (!target || !authStore.hasWriteAccess) return
+  const nextTree = moveRoadmapNode(nodes.value, target.id, direction)
+  if (!nextTree) return
+
+  menuBusyAction.value = direction
+  errorMessage.value = ''
+  try {
+    const updatedNodes = await roadmapApi.updateTree(nextTree)
+    nodes.value = sortNodes(updatedNodes)
+    const nextNode = nodes.value.find((node) => node.id === target.id) ?? null
+    closeNodeMenu()
+    if (nextNode) {
+      await selectNode(nextNode, { autoScroll: false })
+    }
+    const messageMap = {
+      up: localeStore.isChinese ? '节点已前移' : 'Node moved earlier',
+      down: localeStore.isChinese ? '节点已后移' : 'Node moved later',
+      indent: localeStore.isChinese ? '节点已下沉' : 'Node moved deeper',
+      outdent: localeStore.isChinese ? '节点已上提' : 'Node moved higher',
+    } as const
+    flashActionMessage(messageMap[direction])
+  } catch (error: any) {
+    errorMessage.value = error.message || copy.value.loadError
+  } finally {
+    menuBusyAction.value = null
+  }
+}
+
+const deleteNodeFromMenu = async () => {
+  const target = getNodeFromMenu()
+  if (!target || !authStore.hasWriteAccess) return
+
+  menuBusyAction.value = 'delete'
+  errorMessage.value = ''
+  const fallbackNodeId = target.parent_id ?? nodes.value.find((node) => node.id !== target.id)?.id ?? null
+
+  try {
+    const updatedNodes = await roadmapApi.deleteNode(target.id)
+    nodes.value = sortNodes(updatedNodes)
+    closeNodeMenu()
+
+    const fallbackNode = fallbackNodeId ? nodes.value.find((node) => node.id === fallbackNodeId) : null
+    if (fallbackNode) {
+      await selectNode(fallbackNode, { autoScroll: false })
+    } else if (nodes.value.length > 0) {
+      await selectNode(nodes.value[0]!, { autoScroll: false })
+    } else {
+      clearSelectedNode()
+    }
+    flashActionMessage(localeStore.isChinese ? '节点已删除' : 'Node deleted')
+  } catch (error: any) {
+    errorMessage.value = error.message || copy.value.loadError
+  } finally {
+    menuBusyAction.value = null
+  }
+}
+
+const handleNodeContextMenu = async (payload: { event: MouseEvent | TouchEvent; node: { data: RoadmapNode } }) => {
+  if (!authStore.hasWriteAccess) return
+  payload.event.preventDefault()
+  await selectNode(payload.node.data, { autoScroll: false })
+  openNodeMenu(payload.node.data, payload.event)
+}
+
+const handleNodeClick = async (payload: { event?: MouseEvent | TouchEvent; node: { data: RoadmapNode } }) => {
+  const { event, node } = payload
+  const coarsePointer = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
+  const mouseDoubleTapLike = Boolean(event && event instanceof MouseEvent && coarsePointer && event.detail >= 2)
+  const isTouchInteraction = Boolean(event && event.type.startsWith('touch')) || mouseDoubleTapLike
+
+  if (isTouchInteraction && event && authStore.hasWriteAccess) {
+    const now = Date.now()
+    const previousTap = lastTouchTap.value
+    if (previousTap && previousTap.nodeId === node.data.id && now - previousTap.ts < 320) {
+      lastTouchTap.value = null
+      openNodeMenu(node.data, event)
+      return
+    }
+    lastTouchTap.value = { nodeId: node.data.id, ts: now }
+  }
+
+  await selectNode(node.data, { autoScroll: true })
 }
 
 const openNote = (id: number) => router.push(`/note/${id}`)
@@ -283,6 +594,30 @@ const scrollToTop = () => {
   pageScrollRef.value?.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
+const handleGlobalPointerDown = (event: PointerEvent) => {
+  if (!canvasMenu.value.open) return
+  const target = event.target as Node | null
+  if (target && actionMenuRef.value?.contains(target)) return
+  closeNodeMenu()
+}
+
+const handleGlobalKeydown = (event: KeyboardEvent) => {
+  if (event.key !== 'Escape') return
+  closeNodeMenu()
+}
+
+const handlePageScroll = () => {
+  updateFloatingTopVisibility()
+  if (canvasMenu.value.open) {
+    closeNodeMenu()
+  }
+}
+
+const handleViewportChange = () => {
+  if (!canvasMenu.value.open) return
+  void repositionNodeMenu('measure')
+}
+
 watch(
   () => authStore.activeWorkspaceId,
   () => {
@@ -310,12 +645,20 @@ watch(
 )
 
 onMounted(() => {
-  pageScrollRef.value?.addEventListener('scroll', updateFloatingTopVisibility, { passive: true })
+  pageScrollRef.value?.addEventListener('scroll', handlePageScroll, { passive: true })
+  window.addEventListener('pointerdown', handleGlobalPointerDown, { passive: true })
+  window.addEventListener('keydown', handleGlobalKeydown)
+  window.addEventListener('resize', handleViewportChange, { passive: true })
+  window.addEventListener('orientationchange', handleViewportChange)
   updateFloatingTopVisibility()
 })
 
 onUnmounted(() => {
-  pageScrollRef.value?.removeEventListener('scroll', updateFloatingTopVisibility)
+  pageScrollRef.value?.removeEventListener('scroll', handlePageScroll)
+  window.removeEventListener('pointerdown', handleGlobalPointerDown)
+  window.removeEventListener('keydown', handleGlobalKeydown)
+  window.removeEventListener('resize', handleViewportChange)
+  window.removeEventListener('orientationchange', handleViewportChange)
 })
 </script>
 
@@ -349,6 +692,9 @@ onUnmounted(() => {
 
       <div v-if="shareMessage" class="roadmap-toast">
         {{ shareMessage }}
+      </div>
+      <div v-if="actionMessage" class="roadmap-toast roadmap-toast-action">
+        {{ actionMessage }}
       </div>
 
       <div class="roadmap-canvas-shell">
@@ -385,6 +731,7 @@ onUnmounted(() => {
           class="h-full w-full bg-transparent"
           :nodes="flowNodes"
           :edges="flowEdges"
+          :edge-types="edgeTypes"
           fit-view-on-init
           :fit-view-on-init-options="{ padding: 0.42, minZoom: 0.48, maxZoom: 1.1, duration: 360 }"
           :min-zoom="0.48"
@@ -392,6 +739,7 @@ onUnmounted(() => {
           :nodes-draggable="false"
           :elements-selectable="false"
           @node-click="handleNodeClick"
+          @node-context-menu="handleNodeContextMenu"
         >
           <Background pattern-color="#e5e7eb" :gap="26" variant="dots" />
         </VueFlow>
@@ -427,13 +775,55 @@ onUnmounted(() => {
 
             <div class="roadmap-detail-tags">
               <span class="admin-chip-warm">{{ typeLabel(selectedNode.node_type) }}</span>
-              <span :class="selectedNode.status === 'completed' ? 'admin-chip-green' : selectedNode.status === 'in_progress' ? 'admin-chip-blue' : 'admin-chip'">
+              <template v-if="authStore.hasWriteAccess">
+                <button
+                  type="button"
+                  class="status-toggle"
+                  :class="selectedNode.status === 'todo' ? 'status-toggle-active' : ''"
+                  @click="updateStatus('todo')"
+                >
+                  {{ copy.todo }}
+                </button>
+                <button
+                  type="button"
+                  class="status-toggle"
+                  :class="selectedNode.status === 'in_progress' ? 'status-toggle-active status-toggle-blue' : ''"
+                  @click="updateStatus('in_progress')"
+                >
+                  {{ copy.inProgress }}
+                </button>
+                <button
+                  type="button"
+                  class="status-toggle"
+                  :class="selectedNode.status === 'completed' ? 'status-toggle-active status-toggle-green' : ''"
+                  @click="updateStatus('completed')"
+                >
+                  {{ copy.completed }}
+                </button>
+              </template>
+              <span v-else :class="selectedNode.status === 'completed' ? 'admin-chip-green' : selectedNode.status === 'in_progress' ? 'admin-chip-blue' : 'admin-chip'">
                 {{ statusLabel(selectedNode.status) }}
               </span>
             </div>
 
-            <h2 class="mt-3 text-[2rem] font-bold tracking-[-0.05em] text-[var(--ink-strong)]">{{ selectedNode.title }}</h2>
-            <p class="mt-2 max-w-3xl text-[15px] leading-7 text-[var(--ink-soft)]">{{ selectedNode.description || copy.noDescription }}</p>
+            <InlineEditableField
+              :model-value="selectedNode.title"
+              :disabled="!authStore.hasWriteAccess || menuBusyAction === 'patch'"
+              :placeholder="titlePlaceholder"
+              display-class="roadmap-inline-title"
+              input-class="roadmap-inline-title-input"
+              @save="saveTitle"
+            />
+            <InlineEditableField
+              :model-value="selectedNode.description || ''"
+              multiline
+              :disabled="!authStore.hasWriteAccess || menuBusyAction === 'patch'"
+              :placeholder="descriptionPlaceholder"
+              :empty-label="copy.noDescription"
+              display-class="roadmap-inline-description"
+              input-class="roadmap-inline-description-input"
+              @save="saveDescription"
+            />
           </div>
 
           <button v-if="authStore.hasWriteAccess" class="roadmap-action-button product-button-dark" type="button" @click="createNote">
@@ -502,6 +892,64 @@ onUnmounted(() => {
       </div>
     </section>
 
+    <Teleport to="body">
+      <Transition name="menu-pop">
+        <div
+          v-if="canvasMenu.open && authStore.hasWriteAccess"
+          ref="actionMenuRef"
+          class="roadmap-node-context-menu"
+          :style="{ left: `${canvasMenu.x}px`, top: `${canvasMenu.y}px` }"
+          @contextmenu.prevent
+        >
+          <div class="roadmap-menu-group">
+            <div class="roadmap-menu-group-label">{{ menuCopy.nodeActions }}</div>
+            <button class="roadmap-menu-item" type="button" :disabled="menuBusyAction !== null" @click="createNodeFromMenu('child')">
+              {{ menuCopy.addChild }}
+            </button>
+            <button class="roadmap-menu-item" type="button" :disabled="menuBusyAction !== null" @click="createNodeFromMenu('sibling')">
+              {{ menuCopy.addSibling }}
+            </button>
+            <button class="roadmap-menu-item roadmap-menu-item-danger" type="button" :disabled="menuBusyAction !== null" @click="deleteNodeFromMenu">
+              {{ menuCopy.delete }}
+            </button>
+          </div>
+
+          <div class="roadmap-menu-divider"></div>
+
+          <div class="roadmap-menu-group">
+            <div class="roadmap-menu-group-label">{{ menuCopy.pathTools }}</div>
+            <button class="roadmap-menu-item" type="button" :disabled="!selectedMoveState.canMoveUp || menuBusyAction !== null" @click="moveSelectedNode('up')">
+              {{ menuCopy.moveEarlier }}
+            </button>
+            <button class="roadmap-menu-item" type="button" :disabled="!selectedMoveState.canMoveDown || menuBusyAction !== null" @click="moveSelectedNode('down')">
+              {{ menuCopy.moveLater }}
+            </button>
+            <button class="roadmap-menu-item" type="button" :disabled="!selectedMoveState.canIndent || menuBusyAction !== null" @click="moveSelectedNode('indent')">
+              {{ menuCopy.moveDeeper }}
+            </button>
+            <button class="roadmap-menu-item" type="button" :disabled="!selectedMoveState.canOutdent || menuBusyAction !== null" @click="moveSelectedNode('outdent')">
+              {{ menuCopy.moveHigher }}
+            </button>
+          </div>
+
+          <div class="roadmap-menu-divider"></div>
+
+          <div class="roadmap-menu-group">
+            <div class="roadmap-menu-group-label">{{ menuCopy.status }}</div>
+            <button class="roadmap-menu-item" type="button" :disabled="menuBusyAction !== null || selectedNode?.status === 'todo'" @click="updateStatus('todo')">
+              {{ copy.todo }}
+            </button>
+            <button class="roadmap-menu-item" type="button" :disabled="menuBusyAction !== null || selectedNode?.status === 'in_progress'" @click="updateStatus('in_progress')">
+              {{ copy.inProgress }}
+            </button>
+            <button class="roadmap-menu-item" type="button" :disabled="menuBusyAction !== null || selectedNode?.status === 'completed'" @click="updateStatus('completed')">
+              {{ copy.completed }}
+            </button>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
     <button
       v-if="showFloatingTop"
       type="button"
@@ -547,6 +995,11 @@ onUnmounted(() => {
   color: white;
   font-size: 11px;
   font-weight: 700;
+}
+
+.roadmap-toast-action {
+  top: 56px;
+  background: rgba(30, 64, 175, 0.92);
 }
 
 .roadmap-action-button {
@@ -705,6 +1158,144 @@ onUnmounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  align-items: center;
+}
+
+.status-toggle {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 999px;
+  background: rgba(248, 248, 246, 0.82);
+  padding: 8px 12px;
+  color: var(--ink-main);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.1;
+  transition: border-color 0.16s ease, background-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.status-toggle:hover {
+  border-color: rgba(15, 23, 42, 0.14);
+}
+
+.status-toggle-active {
+  border-color: rgba(15, 23, 42, 0.28);
+  background: rgba(15, 23, 42, 0.92);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.15);
+}
+
+.status-toggle-blue.status-toggle-active {
+  border-color: rgba(37, 99, 235, 0.36);
+  background: rgba(37, 99, 235, 0.92);
+}
+
+.status-toggle-green.status-toggle-active {
+  border-color: rgba(21, 128, 61, 0.36);
+  background: rgba(21, 128, 61, 0.9);
+}
+
+.roadmap-inline-title {
+  margin-top: 12px;
+  color: var(--ink-strong);
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 1.04;
+}
+
+.roadmap-inline-title-input {
+  margin-top: 12px;
+  border-radius: 18px;
+  padding: 14px 16px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.roadmap-inline-description {
+  margin-top: 8px;
+  max-width: 46rem;
+  color: var(--ink-soft);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.roadmap-inline-description-input {
+  margin-top: 8px;
+  border-radius: 16px;
+  min-height: 124px;
+}
+
+.roadmap-node-context-menu {
+  position: fixed;
+  z-index: 40;
+  width: 220px;
+  max-height: calc(100dvh - 24px);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.98);
+  padding: 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
+  backdrop-filter: blur(10px);
+}
+
+.roadmap-menu-group {
+  display: grid;
+  gap: 6px;
+}
+
+.roadmap-menu-group-label {
+  padding: 2px 4px 4px;
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.roadmap-menu-item {
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  padding: 8px 10px;
+  text-align: left;
+  color: var(--ink-main);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+  transition: background-color 0.16s ease;
+}
+
+.roadmap-menu-item:hover:not(:disabled) {
+  background: rgba(15, 23, 42, 0.06);
+}
+
+.roadmap-menu-item-danger {
+  color: #b91c1c;
+}
+
+.roadmap-menu-item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.roadmap-menu-divider {
+  height: 1px;
+  margin: 8px 0;
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.menu-pop-enter-active,
+.menu-pop-leave-active {
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.menu-pop-enter-from,
+.menu-pop-leave-to {
+  opacity: 0;
+  transform: translateY(4px) scale(0.98);
 }
 
 .roadmap-empty-notes {
@@ -1010,6 +1601,10 @@ onUnmounted(() => {
     bottom: 14px;
     width: 40px;
     height: 40px;
+  }
+
+  .roadmap-node-context-menu {
+    width: min(220px, calc(100vw - 20px));
   }
 }
 </style>
