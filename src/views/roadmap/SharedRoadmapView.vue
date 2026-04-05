@@ -2,7 +2,6 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Background } from '@vue-flow/background'
-import { Controls } from '@vue-flow/controls'
 import { VueFlow } from '@vue-flow/core'
 import { ArrowUp, ArrowUpRight } from 'lucide-vue-next'
 import RoadmapHeroHeader from '@/components/roadmap/RoadmapHeroHeader.vue'
@@ -342,7 +341,6 @@ onUnmounted(() => {
           @node-click="handleNodeClick"
         >
           <Background pattern-color="#e5e7eb" :gap="26" variant="dots" />
-          <Controls />
         </VueFlow>
 
         <div v-if="hasNodes" class="roadmap-canvas-hint">
@@ -409,9 +407,9 @@ onUnmounted(() => {
             class="roadmap-note-row cursor-pointer"
             @click="openNote(note.id)"
           >
-            <div class="min-w-0 flex-1">
-              <div class="truncate text-base font-semibold text-[var(--ink-strong)]">{{ note.title }}</div>
-              <div class="mt-1 text-sm text-[var(--ink-soft)]">{{ note.summary || copy.noDescription }}</div>
+            <div class="roadmap-note-copy">
+              <div class="roadmap-note-title">{{ note.title }}</div>
+              <div class="roadmap-note-summary">{{ note.summary || copy.noDescription }}</div>
             </div>
 
             <div class="roadmap-note-row-side">
@@ -676,32 +674,52 @@ onUnmounted(() => {
 
 .roadmap-notes-list {
   display: grid;
-  gap: 8px;
+  gap: 0;
+  border-top: 1px solid rgba(15, 23, 42, 0.07);
 }
 
 .roadmap-note-row {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   border-top: 1px solid rgba(15, 23, 42, 0.06);
-  border-radius: 18px;
-  padding: 12px 12px 0;
-  transition: background-color 0.18s ease, opacity 0.18s ease, transform 0.18s ease;
+  padding: 16px 0;
+  transition: background-color 0.18s ease, opacity 0.18s ease;
 }
 
 .roadmap-note-row:first-child {
   border-top: 0;
-  padding-top: 0;
 }
 
 .roadmap-note-row:hover {
-  background: rgba(248, 248, 246, 0.62);
-  opacity: 0.94;
+  background: rgba(248, 248, 246, 0.52);
+}
+
+.roadmap-note-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.roadmap-note-title {
+  overflow: hidden;
+  color: var(--ink-strong);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roadmap-note-summary {
+  margin-top: 4px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.7;
 }
 
 .roadmap-note-row-side {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
@@ -710,14 +728,15 @@ onUnmounted(() => {
   color: var(--ink-soft);
   font-size: 11px;
   font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .roadmap-note-link {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: var(--ink-strong);
-  font-size: 13px;
+  color: var(--ink-main);
+  font-size: 12px;
   font-weight: 700;
   transition: opacity 0.18s ease;
 }
@@ -834,13 +853,16 @@ onUnmounted(() => {
 @media (min-width: 768px) {
   .roadmap-note-row {
     flex-direction: row;
-    align-items: start;
+    align-items: center;
     justify-content: space-between;
+    gap: 18px;
   }
 
   .roadmap-note-row-side {
     flex: 0 0 auto;
     align-items: center;
+    justify-content: flex-end;
+    min-width: 176px;
   }
 
   .roadmap-canvas-hint {
@@ -879,34 +901,6 @@ onUnmounted(() => {
 :deep(.roadmap-node-completed) {
   border-color: rgba(21, 128, 61, 0.16);
   background: rgba(248, 255, 251, 0.94);
-}
-
-:deep(.vue-flow__controls) {
-  overflow: hidden;
-  border: 1px solid rgba(15, 23, 42, 0.07);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.84);
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
-  backdrop-filter: blur(12px);
-}
-
-:deep(.vue-flow__controls-button) {
-  width: 38px;
-  height: 38px;
-  border: 0;
-  background: transparent;
-  color: var(--ink-main);
-  transition: background-color 0.18s ease, color 0.18s ease;
-}
-
-:deep(.vue-flow__controls-button:hover) {
-  background: rgba(15, 23, 42, 0.05);
-  color: var(--ink-strong);
-}
-
-:deep(.vue-flow__controls-button svg) {
-  max-width: 15px;
-  max-height: 15px;
 }
 
 :deep(.vue-flow__attribution) {
