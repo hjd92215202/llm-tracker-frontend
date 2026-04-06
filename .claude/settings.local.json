@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Read(//c/Users/brace/Documents/work/ai/llm-tracker-backend/**)",
-      "Read(//c/Users/brace/.claude/plans/**)"
+      "Read(//c/Users/brace/.claude/plans/**)",
+      "Bash(npm run:*)",
+      "Bash(npx vue-tsc:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\brace\\.claude\\plans",

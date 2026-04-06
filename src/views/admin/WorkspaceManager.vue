@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { Users } from 'lucide-vue-next'
 import { workspaceApi } from '@/api/workspace'
 import { useAuthStore } from '@/store/auth'
 import { useLocaleStore } from '@/store/locale'
@@ -15,6 +16,10 @@ const errorMessage = ref('')
 const inviteMessage = ref('')
 const inviteRole = ref<WorkspaceRole>('member')
 const inviteLink = ref<WorkspaceInviteLink | null>(null)
+
+// Modal 状态
+const isRemoveConfirmOpen = ref(false)
+const memberToRemove = ref<WorkspaceMember | null>(null)
 
 const copy = computed(() =>
   localeStore.isChinese
@@ -47,6 +52,7 @@ const copy = computed(() =>
         ownerOnlyHint: '仅所有者可调整其他所有者的权限',
         removeConfirm: '确定要将 {name} 从 {workspace} 中移除吗？',
         remove: '移除',
+        cancel: '取消',
         joinedAt: '加入于',
         totalMembers: '位成员',
         youBadge: '我',
@@ -81,6 +87,7 @@ const copy = computed(() =>
         ownerOnlyHint: 'Only owners can modify other owner roles',
         removeConfirm: 'Remove {name} from {workspace}?',
         remove: 'Remove',
+        cancel: 'Cancel',
         joinedAt: 'Joined',
         totalMembers: 'Members',
         youBadge: 'You',
@@ -191,6 +198,9 @@ const copyInviteLink = async () => {
   try {
     await navigator.clipboard.writeText(currentInviteUrl.value)
     inviteMessage.value = copy.value.copied
+    window.setTimeout(() => {
+      inviteMessage.value = ''
+    }, 3000)
   } catch (error: any) {
     errorMessage.value = error.message || copy.value.inviteError
   }
@@ -208,17 +218,19 @@ const updateRole = async (member: WorkspaceMember, role: WorkspaceRole) => {
   }
 }
 
-const removeMember = async (member: WorkspaceMember) => {
-  if (!currentWorkspaceId.value || !canRemoveMember(member)) return
+const triggerRemoveMember = (member: WorkspaceMember) => {
+  if (!canRemoveMember(member)) return
+  memberToRemove.value = member
+  isRemoveConfirmOpen.value = true
+}
 
-  const text = copy.value.removeConfirm
-    .replace('{name}', member.username)
-    .replace('{workspace}', currentWorkspace.value?.workspace_name || 'workspace')
-
-  if (!window.confirm(text)) return
+const executeRemoveMember = async () => {
+  if (!currentWorkspaceId.value || !memberToRemove.value) return
 
   try {
-    await workspaceApi.removeMember(currentWorkspaceId.value, member.user_id)
+    await workspaceApi.removeMember(currentWorkspaceId.value, memberToRemove.value.user_id)
+    isRemoveConfirmOpen.value = false
+    memberToRemove.value = null
     await fetchMembers()
   } catch (error: any) {
     errorMessage.value = error.message || copy.value.removeError
@@ -237,137 +249,149 @@ watch(
 </script>
 
 <template>
-  <div class="admin-page">
-    <header class="max-w-4xl mb-8">
-      <div class="admin-kicker">{{ copy.kicker }}</div>
-      <h1 class="admin-headline mt-3">{{ copy.title }}</h1>
-      <p class="admin-subtitle mt-4">{{ copy.summary }}</p>
+  <div class="admin-page max-w-[1200px] mx-auto">
+    <!-- 顶部 Header -->
+    <header class="mb-8">
+      <div class="text-xs font-bold tracking-widest text-[var(--ink-soft)] uppercase">{{ copy.kicker }}</div>
+      <h1 class="mt-2 text-3xl md:text-4xl font-black tracking-tight text-[var(--ink-strong)]">{{ copy.title }}</h1>
+      <p class="mt-3 text-[15px] leading-relaxed text-[var(--ink-soft)] max-w-2xl">{{ copy.summary }}</p>
 
       <div class="mt-6 flex flex-wrap gap-3">
-        <div class="admin-chip-dark !px-4 !py-2">
-          <span class="opacity-60 mr-2">{{ copy.currentWorkspace }}</span>
+        <div class="inline-flex items-center rounded-full bg-[var(--ink-strong)] px-4 py-2 text-xs text-white shadow-sm">
+          <span class="opacity-70 mr-2">{{ copy.currentWorkspace }}</span>
           <span class="font-bold">{{ currentWorkspace?.workspace_name || '--' }}</span>
         </div>
-        <div class="admin-chip !px-4 !py-2">
-          <span class="font-bold mr-1">{{ members.length }}</span>
-          <span class="opacity-60">{{ copy.totalMembers }}</span>
+        <div class="inline-flex items-center rounded-full bg-white border border-gray-200 px-4 py-2 text-xs text-[var(--ink-main)] shadow-sm">
+          <span class="font-black mr-1.5">{{ members.length }}</span>
+          <span class="font-medium text-gray-500">{{ copy.totalMembers }}</span>
         </div>
       </div>
     </header>
 
-    <div v-if="errorMessage" class="product-error mb-6 px-5 py-4 text-sm font-bold shadow-sm">
+    <div v-if="errorMessage" class="rounded-2xl border border-red-200 bg-red-50 text-red-600 mb-6 px-5 py-4 text-sm font-bold shadow-sm">
       {{ errorMessage }}
     </div>
 
-    <section class="grid gap-8 xl:grid-cols-[1fr_360px] items-start">
-      <!-- 成员列表 -->
-      <div class="space-y-6">
-        <article class="admin-card p-6 md:p-8">
-          <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-8">
-            <div>
-              <h2 class="admin-card-title text-xl">{{ copy.membersTitle }}</h2>
-              <p class="admin-card-copy mt-1">{{ copy.membersHint }}</p>
-            </div>
-            <div :class="canManageMembers ? 'admin-chip-green' : 'admin-chip'" class="!px-4 !py-2 font-bold">
-              {{ canManageMembers ? copy.manageEnabled : copy.readOnly }}
-            </div>
+    <section class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px] items-start">
+      <!-- 左侧：成员列表面板 -->
+      <article class="rounded-[24px] border border-gray-100 bg-white p-6 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
+          <div>
+            <h2 class="text-xl font-black text-[var(--ink-strong)]">{{ copy.membersTitle }}</h2>
+            <p class="text-sm text-gray-500 mt-1">{{ copy.membersHint }}</p>
           </div>
-
-          <div v-if="loadingMembers" class="admin-empty py-16">
-            <div class="animate-pulse flex flex-col items-center">
-              <div class="h-4 w-32 bg-gray-200 rounded mb-4"></div>
-              <div class="text-sm">{{ copy.loading }}</div>
-            </div>
+          <div class="px-3 py-1.5 rounded-lg text-xs font-bold" :class="canManageMembers ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'">
+            {{ canManageMembers ? copy.manageEnabled : copy.readOnly }}
           </div>
+        </div>
 
-          <div v-else-if="members.length === 0" class="admin-empty py-16">
-            {{ copy.noMembers }}
+        <div v-if="loadingMembers" class="py-16 text-center border border-dashed border-gray-200 rounded-2xl bg-gray-50/50">
+          <div class="animate-pulse flex flex-col items-center">
+            <div class="h-4 w-32 bg-gray-200 rounded mb-4"></div>
+            <div class="text-sm font-medium text-gray-400">{{ copy.loading }}</div>
           </div>
+        </div>
 
-          <div v-else class="space-y-4">
-            <article v-for="member in members" :key="member.user_id" 
-              class="member-row group transition-all duration-200 border border-transparent hover:border-[rgba(15,23,42,0.08)] hover:bg-[rgba(15,23,42,0.02)] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-4">
-              
-              <div class="flex items-center gap-4 flex-1">
-                <div class="member-avatar-box">
-                  {{ member.username?.charAt(0)?.toUpperCase() || 'U' }}
+        <div v-else-if="members.length === 0" class="py-16 text-center border border-dashed border-gray-200 rounded-2xl bg-gray-50/50 flex flex-col items-center justify-center gap-3">
+          <div class="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+            <Users :size="24" />
+          </div>
+          <div class="text-sm font-bold text-gray-600">{{ copy.noMembers }}</div>
+        </div>
+
+        <div v-else class="space-y-1">
+          <article v-for="member in members" :key="member.user_id" 
+            class="group flex flex-col sm:flex-row sm:items-center gap-4 p-4 -mx-4 rounded-2xl hover:bg-gray-50/80 transition-colors">
+            
+            <div class="flex items-center gap-4 flex-1 min-w-0">
+              <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 text-sm font-black text-gray-700 border border-gray-200/50 shadow-sm">
+                {{ member.username?.charAt(0)?.toUpperCase() || 'U' }}
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="text-[15px] font-bold text-gray-900 truncate">{{ member.username }}</span>
+                  <span v-if="member.user_id === authStore.userId" class="px-2 py-0.5 rounded-md bg-gray-900 text-white text-[10px] font-bold">
+                    {{ copy.youBadge }}
+                  </span>
                 </div>
-                <div class="min-w-0">
-                  <div class="flex items-center gap-2">
-                    <span class="text-base font-bold text-[var(--ink-strong)] truncate">{{ member.username }}</span>
-                    <span v-if="member.user_id === authStore.userId" class="admin-chip-dark !text-[10px] !px-2 !py-0.5">
-                      {{ copy.youBadge }}
-                    </span>
-                  </div>
-                  <div class="text-xs text-[var(--ink-soft)] mt-0.5 truncate">{{ member.email }}</div>
-                </div>
+                <div class="text-xs font-medium text-gray-500 mt-0.5 truncate">{{ member.email }}</div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3 sm:justify-end">
+              <div class="flex flex-col items-end mr-2 hidden md:flex">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400">{{ copy.joinedAt }}</span>
+                <span class="text-xs font-semibold text-gray-600 mt-0.5">{{ formatDate(member.joined_at) }}</span>
               </div>
 
-              <div class="flex flex-wrap items-center gap-3 sm:justify-end">
-                <div class="flex flex-col items-end mr-2 hidden md:flex">
-                  <span class="text-[10px] uppercase tracking-wider text-[var(--ink-soft)] font-bold">{{ copy.joinedAt }}</span>
-                  <span class="text-xs font-semibold">{{ formatDate(member.joined_at) }}</span>
-                </div>
-
-                <div class="relative min-w-[130px]">
-                  <select
-                    :value="member.role"
-                    class="role-select"
-                    :disabled="!canEditMemberRole(member)"
-                    @change="updateRole(member, ($event.target as HTMLSelectElement).value as WorkspaceRole)"
-                  >
-                    <option v-for="role in roleOptions" :key="role" :value="role">
-                      {{ roleLabel[role] }}
-                    </option>
-                  </select>
-                </div>
-
-                <button
-                  class="remove-btn"
-                  :class="canRemoveMember(member) ? 'remove-btn-active' : 'remove-btn-disabled'"
-                  type="button"
-                  :disabled="!canRemoveMember(member)"
-                  :title="memberHint(member)"
-                  @click="removeMember(member)"
+              <!-- 纯 Tailwind 构建的原生 Select，极致稳定 -->
+              <div class="relative min-w-[120px]">
+                <select
+                  :value="member.role"
+                  class="w-full appearance-none bg-gray-50 hover:bg-gray-100 border border-transparent hover:border-gray-200 text-gray-700 text-sm font-bold rounded-xl pl-3 pr-8 py-2 transition-colors outline-none focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50 cursor-pointer"
+                  :disabled="!canEditMemberRole(member)"
+                  @change="updateRole(member, ($event.target as HTMLSelectElement).value as WorkspaceRole)"
                 >
-                  {{ copy.remove }}
-                </button>
+                  <option v-for="role in roleOptions" :key="role" :value="role">
+                    {{ roleLabel[role] }}
+                  </option>
+                </select>
+                <div class="absolute inset-y-0 right-2.5 flex items-center pointer-events-none text-gray-400">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </div>
               </div>
-            </article>
-          </div>
-        </article>
-      </div>
 
-      <!-- 侧边邀请栏 -->
+              <button
+                class="px-3 py-2 text-sm font-bold rounded-xl transition-all"
+                :class="canRemoveMember(member) ? 'text-red-600 bg-red-50 hover:bg-red-100' : 'text-gray-300 cursor-not-allowed'"
+                type="button"
+                :disabled="!canRemoveMember(member)"
+                :title="memberHint(member)"
+                @click="triggerRemoveMember(member)"
+              >
+                {{ copy.remove }}
+              </button>
+            </div>
+          </article>
+        </div>
+      </article>
+
+      <!-- 右侧：快速邀请面板 -->
       <aside class="space-y-6">
-        <article class="admin-card overflow-hidden">
-          <div class="p-6 md:p-8 bg-[rgba(229,106,43,0.03)] border-b border-[rgba(229,106,43,0.08)]">
-            <h2 class="admin-card-title text-lg flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-[var(--brand)]"></span>
+        <article class="rounded-[24px] border border-[rgba(229,106,43,0.15)] bg-gradient-to-b from-[rgba(229,106,43,0.03)] to-transparent shadow-[0_8px_30px_rgba(229,106,43,0.05)] overflow-hidden">
+          <div class="p-6 md:p-8 border-b border-[rgba(229,106,43,0.08)]">
+            <h2 class="text-xl font-black text-[var(--ink-strong)] flex items-center gap-2.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-[#e56a2b]"></span>
               {{ copy.inviteTitle }}
             </h2>
             <p class="text-sm leading-relaxed text-[var(--ink-soft)] mt-3">{{ copy.inviteHint }}</p>
           </div>
           
           <div class="p-6 md:p-8 space-y-6">
+            <!-- 100% 纯 Tailwind 构建的网格选择器，告别失效 Bug -->
             <div class="space-y-3">
-              <label class="product-label text-xs uppercase tracking-widest">{{ copy.inviteRoleLabel }}</label>
-              <div class="grid grid-cols-2 gap-2">
+              <label class="text-xs font-bold uppercase tracking-wider text-gray-500">{{ copy.inviteRoleLabel }}</label>
+              <div class="grid grid-cols-2 gap-2.5">
                 <button 
                   v-for="role in roleOptions" 
                   :key="role"
                   type="button"
-                  class="role-opt-btn"
-                  :class="inviteRole === role ? 'role-opt-btn-active' : ''"
+                  class="relative flex items-center justify-center px-3 py-3 text-sm font-bold rounded-xl border-2 transition-all outline-none"
+                  :class="inviteRole === role 
+                    ? 'border-[#e56a2b] bg-[#e56a2b]/10 text-[#e56a2b]' 
+                    : 'border-transparent bg-white shadow-sm text-gray-500 hover:bg-gray-50 hover:text-gray-800 hover:border-gray-200'"
                   @click="inviteRole = role"
                 >
                   {{ roleLabel[role] }}
+                  <!-- 选中态小圆点 -->
+                  <span v-if="inviteRole === role" class="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-[#e56a2b]"></span>
                 </button>
               </div>
             </div>
 
+            <!-- 生成按钮 -->
             <button
-              class="product-button-primary w-full !py-4 shadow-lg shadow-[rgba(229,106,43,0.2)]"
+              class="w-full flex items-center justify-center px-4 py-3.5 rounded-xl bg-[var(--ink-strong)] text-white font-bold text-sm hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-gray-900/10"
               type="button"
               :disabled="!canManageMembers || creatingInviteLink"
               @click="handleCreateInviteLink"
@@ -375,14 +399,20 @@ watch(
               {{ creatingInviteLink ? copy.inviteGenerating : copy.inviteAction }}
             </button>
 
-            <div v-if="inviteLink || inviteMessage" class="space-y-4 pt-4 border-t border-[rgba(15,23,42,0.06)]">
+            <!-- 链接展示区 -->
+            <div v-if="inviteLink || inviteMessage" class="space-y-4 pt-5 border-t border-[rgba(15,23,42,0.06)] animate-in fade-in slide-in-from-top-2">
               <div class="space-y-2">
-                <label class="product-label text-[10px] uppercase tracking-widest text-[var(--ink-soft)]">{{ copy.inviteLinkLabel }}</label>
+                <label class="text-[10px] font-bold uppercase tracking-widest text-gray-400">{{ copy.inviteLinkLabel }}</label>
                 <div class="relative group">
-                  <input :value="currentInviteUrl || copy.inviteLinkEmpty" type="text" class="admin-input !pr-12 !bg-[rgba(15,23,42,0.02)] !text-xs font-mono" readonly />
+                  <input 
+                    :value="currentInviteUrl || copy.inviteLinkEmpty" 
+                    type="text" 
+                    class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 pr-12 text-sm font-mono text-gray-600 outline-none focus:border-[#e56a2b] focus:ring-2 focus:ring-[#e56a2b]/10 transition-all" 
+                    readonly 
+                  />
                   <button 
                     v-if="currentInviteUrl"
-                    class="absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:bg-white rounded-lg transition-colors"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-[#e56a2b] hover:bg-orange-50 rounded-lg transition-colors"
                     @click="copyInviteLink"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
@@ -390,12 +420,14 @@ watch(
                 </div>
               </div>
 
-              <div v-if="inviteMessage" class="rounded-xl bg-[var(--accent-soft)] px-4 py-3 text-xs font-bold text-[var(--accent)] text-center animate-in fade-in slide-in-from-top-1">
+              <!-- 成功提示 Toast -->
+              <div v-if="inviteMessage" class="flex items-center justify-center gap-2 rounded-xl bg-blue-50 px-4 py-3 text-xs font-bold text-blue-600 animate-in fade-in zoom-in-95">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 {{ inviteMessage }}
               </div>
 
-              <div class="flex items-center gap-2 text-[10px] font-bold text-[var(--ink-soft)] opacity-70">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <div class="flex items-center gap-2 text-[10px] font-bold text-gray-400">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 {{ copy.inviteExpires }}
               </div>
             </div>
@@ -403,45 +435,53 @@ watch(
         </article>
       </aside>
     </section>
+
+    <!-- 全局 Teleport 模态框，用于安全操作确认 -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="isRemoveConfirmOpen" class="fixed inset-0 z-[110] flex items-center justify-center p-6">
+          <div class="absolute inset-0 bg-gray-900/30 backdrop-blur-sm" @click="isRemoveConfirmOpen = false"></div>
+          <div class="relative w-full max-w-sm rounded-[24px] bg-white p-7 text-center shadow-2xl">
+            <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-50 mb-5">
+              <svg class="h-7 w-7 text-red-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+            </div>
+            <h3 class="text-xl font-black tracking-tight text-gray-900">
+              {{ localeStore.isChinese ? '移除成员' : 'Remove Member' }}
+            </h3>
+            <p class="mt-3 text-sm leading-relaxed text-gray-500">
+              {{ copy.removeConfirm.replace('{name}', memberToRemove?.username || '').replace('{workspace}', currentWorkspace?.workspace_name || '') }}
+            </p>
+            <div class="mt-8 flex gap-3">
+              <button class="flex-1 rounded-xl bg-gray-100 px-4 py-3 text-sm font-bold text-gray-700 hover:bg-gray-200 transition-colors" type="button" @click="isRemoveConfirmOpen = false">
+                {{ copy.cancel }}
+              </button>
+              <button class="flex-1 rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white hover:bg-red-700 shadow-lg shadow-red-600/20 transition-all" type="button" @click="executeRemoveMember">
+                {{ copy.remove }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
-<style lang="postcss" scoped>
-@reference "@/style.css";
-
-.member-avatar-box {
-  @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(15,23,42,0.05)] text-sm font-black text-[var(--ink-strong)] border border-[rgba(15,23,42,0.05)];
+<style scoped>
+/* Modal Transition Animations */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.2s ease;
 }
-
-.role-select {
-  @apply w-full border border-[rgba(15,23,42,0.1)] rounded-xl bg-white px-3 py-2 text-sm font-bold text-[var(--ink-main)] outline-none transition-all hover:border-[rgba(15,23,42,0.2)] focus:ring-2 focus:ring-[rgba(37,99,235,0.1)] appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%235f6b7a'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.75rem center;
-  background-size: 1rem;
+.modal-enter-active .relative,
+.modal-leave-active .relative {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
-.remove-btn {
-  @apply px-4 py-2 text-xs font-black rounded-xl transition-all;
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
 }
-
-.remove-btn-active {
-  @apply text-[var(--danger)] bg-[rgba(220,38,38,0.05)] hover:bg-[rgba(220,38,38,0.1)];
-}
-
-.remove-btn-disabled {
-  @apply text-[rgba(15,23,42,0.2)] cursor-not-allowed;
-}
-
-.role-opt-btn {
-  @apply px-3 py-2.5 rounded-xl border border-[rgba(15,23,42,0.08)] bg-white text-xs font-bold text-[var(--ink-soft)] transition-all hover:border-[var(--brand)] hover:text-[var(--brand)];
-}
-
-.role-opt-btn-active {
-  @apply border-[var(--brand)] bg-[rgba(229,106,43,0.05)] text-[var(--brand)] shadow-sm;
-}
-
-.member-row {
-  @apply border-b border-[rgba(15,23,42,0.04)] last:border-0;
+.modal-enter-from .relative,
+.modal-leave-to .relative {
+  transform: scale(0.95) translateY(10px);
 }
 </style>

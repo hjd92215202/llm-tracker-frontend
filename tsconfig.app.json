@@ -1,4 +1,4 @@
-{
+﻿{
   "extends": "@vue/tsconfig/tsconfig.json", // Change from .dom.json to .json
   "compilerOptions": {
     "composite": true,
@@ -16,12 +16,11 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "moduleDetection": "force",
-    "ignoreDeprecations": "6.0",
+    "ignoreDeprecations": "5.0",
 
     /* Path mapping */
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     },
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "types": ["vite/client", "node"]
