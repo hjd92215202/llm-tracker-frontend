@@ -12,6 +12,21 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/share/:token',
+      name: 'roadmap-share',
+      component: () => import('@/views/roadmap/SharedRoadmapView.vue'),
+    },
+    {
+      path: '/share/:token/notes/:noteId',
+      name: 'shared-note-detail',
+      component: () => import('@/views/roadmap/SharedNoteDetailView.vue'),
+    },
+    {
+      path: '/invite/:token',
+      name: 'workspace-invite',
+      component: () => import('@/views/workspace/WorkspaceInviteView.vue'),
+    },
+    {
       path: '/note/:id',
       name: 'note-detail',
       component: () => import('@/views/note/NoteDetail.vue'),
@@ -32,8 +47,7 @@ const router = createRouter({
         },
         {
           path: 'activity',
-          name: 'admin-activity',
-          component: () => import('@/views/admin/AdminActivityView.vue'),
+          redirect: '/admin/dashboard',
         },
         {
           path: 'search',
@@ -45,7 +59,6 @@ const router = createRouter({
           name: 'admin-workspace',
           component: () => import('@/views/admin/WorkspaceManager.vue'),
         },
-        { path: 'roadmap', name: 'admin-roadmap', component: () => import('@/views/admin/NodeManager.vue') },
         { path: 'notes', name: 'admin-notes', component: () => import('@/views/admin/NoteManager.vue') },
         {
           path: 'note/create',
@@ -76,7 +89,7 @@ router.beforeEach((to) => {
   }
 
   if (authStore.isLoggedIn && (to.name === 'login' || to.name === 'register')) {
-    return { name: 'admin-dashboard' }
+    return { name: 'roadmap' }
   }
 })
 

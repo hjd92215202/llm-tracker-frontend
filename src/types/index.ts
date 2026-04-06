@@ -93,6 +93,74 @@ export interface WorkspaceOverview {
   onboarding: WorkspaceOnboardingChecklistItem[];
 }
 
+export interface WorkspaceInviteLink {
+  workspace_id: number;
+  workspace_name: string;
+  workspace_slug: string;
+  token: string;
+  role: WorkspaceRole;
+  invite_url: string;
+  expires_at: string;
+}
+
+export interface WorkspaceInvitePreview {
+  workspace_id: number;
+  workspace_name: string;
+  workspace_slug: string;
+  role: WorkspaceRole;
+  inviter_name: string;
+  expires_at: string;
+}
+
+export interface WorkspaceShareLink {
+  workspace_id: number;
+  workspace_name: string;
+  workspace_slug: string;
+  share_token: string;
+  share_url: string;
+}
+
+export interface WorkspaceSharedNote {
+  id: number;
+  node_id: number | null;
+  title: string;
+  summary: string | null;
+  content: string;
+  tags: string[] | null;
+  created_at: string;
+}
+
+export interface WorkspaceSharedArtifact {
+  id: number;
+  artifact_type: string;
+  title: string | null;
+  content_url: string;
+  created_at: string;
+}
+
+export interface WorkspaceSharedRoadmap {
+  workspace_id: number;
+  workspace_name: string;
+  workspace_slug: string;
+  nodes: RoadmapNode[];
+}
+
+export interface WorkspaceSharedNodeNotes {
+  workspace_id: number;
+  workspace_name: string;
+  workspace_slug: string;
+  node_id: number;
+  notes: WorkspaceSharedNote[];
+}
+
+export interface WorkspaceSharedNoteDetail {
+  workspace_id: number;
+  workspace_name: string;
+  workspace_slug: string;
+  note: WorkspaceSharedNote;
+  artifacts: WorkspaceSharedArtifact[];
+}
+
 export interface WorkspaceSearchRoadmapItem {
   id: number;
   title: string;
@@ -149,6 +217,12 @@ export interface RoadmapNode {
   parent_id: number | null;
   sort_order: number;
   workspace_id?: number | null;
+}
+
+export interface RoadmapTreeMutationItem {
+  id: number;
+  parent_id: number | null;
+  sort_order: number;
 }
 
 export interface Note {

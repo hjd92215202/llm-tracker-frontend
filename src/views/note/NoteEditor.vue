@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { MdEditor } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import { roadmapApi } from '@/api/roadmap'
@@ -8,6 +8,7 @@ import { noteApi } from '@/api/note'
 import { useAuthStore } from '@/store/auth'
 import { useLocaleStore } from '@/store/locale'
 import type { Artifact, RoadmapNode, WorkspaceRole } from '@/types'
+import { buildRoadmapTree, flattenRoadmapTree } from '@/utils/roadmapTree'
 
 const router = useRouter()
 const route = useRoute()
@@ -20,6 +21,10 @@ const artifactSubmitting = ref(false)
 const nodes = ref<RoadmapNode[]>([])
 const artifacts = ref<Artifact[]>([])
 const errorMessage = ref('')
+const savedMessage = ref('')
+const draftAvailable = ref(false)
+const restoringDraft = ref(false)
+const localDraftSaved = ref(false)
 const form = ref({ title: '', node_id: null as number | null, content: '', tags: '' })
 const artifactForm = ref({
   title: '',
@@ -29,25 +34,42 @@ const artifactForm = ref({
 
 const noteId = computed(() => (route.params.id ? Number(route.params.id) : null))
 const isEditMode = computed(() => Boolean(noteId.value))
+const presetNodeId = computed(() => {
+  const value = Number(route.query.nodeId)
+  return Number.isFinite(value) && value > 0 ? value : null
+})
 const hasWriteAccess = computed(() => authStore.hasWriteAccess)
 const currentWorkspace = computed(() => authStore.activeWorkspace)
 const currentRole = computed<WorkspaceRole>(() => (authStore.activeRole ?? 'viewer') as WorkspaceRole)
 const currentNode = computed(() => nodes.value.find((node) => node.id === form.value.node_id) ?? null)
+const nodeOptions = computed(() =>
+  flattenRoadmapTree(buildRoadmapTree(nodes.value)).map((item) => ({
+    id: item.node.id,
+    label: `${item.depth > 0 ? `${'  '.repeat(item.depth)}└ ` : ''}${item.node.title}`,
+  })),
+)
+const draftStorageKey = computed(() => `note-draft:${authStore.activeWorkspaceId ?? 'global'}:${noteId.value ?? 'new'}`)
+const formSnapshot = computed(() => JSON.stringify(form.value))
+const savedSnapshot = ref('')
 const noteWordCount = computed(() =>
   form.value.content
     .trim()
     .split(/\s+/)
     .filter(Boolean).length
 )
+const hasUnsavedChanges = computed(() => formSnapshot.value !== savedSnapshot.value)
+let draftPersistTimer: number | null = null
+let localDraftSavedTimer: number | null = null
+let savedMessageTimer: number | null = null
 
 const copy = computed(() =>
   localeStore.isChinese
     ? {
         eyebrow: '笔记编辑',
-        editTitle: '更新团队笔记',
-        createTitle: '创建团队笔记',
+        editTitle: '编辑笔记',
+        createTitle: '新建笔记',
         summaryPrefix: '把',
-        summarySuffix: '中的研究过程、关键决策和交付内容整理成一条清晰记录。',
+        summarySuffix: '空间里的方法、结论和过程整理成一条清晰记录。',
         metrics: {
           role: '当前角色',
           words: '字数',
@@ -56,7 +78,7 @@ const copy = computed(() =>
         noNode: '尚未选择节点',
         editingEnabled: '可编辑',
         readOnly: '只读',
-        readonlyHint: '你当前可以查看这条笔记，但不能创建、编辑或附加资料。',
+        readonlyHint: '你当前可以查看内容，但不能创建、编辑或追加资料。',
         loadError: '加载笔记编辑页失败',
         titleRequired: '请填写笔记标题',
         nodeRequired: '请先把这条笔记关联到一个路线图节点',
@@ -69,16 +91,16 @@ const copy = computed(() =>
         loading: '正在加载编辑内容...',
         tagsLabel: '标签',
         tagsPlaceholder: '评估, 检索增强, 入职',
-        nodeLabel: '关联路线图节点',
+        nodeLabel: '关联节点',
         chooseNode: '选择一个节点',
-        back: '返回笔记列表',
+        back: '返回笔记',
         saving: '保存中...',
         saveChanges: '保存修改',
         createNote: '创建笔记',
-        editorPlaceholder: '记录背景、决策、实验、结论和下一步动作...',
+        editorPlaceholder: '记录背景、判断、实验、结论和下一步动作...',
         artifactsEyebrow: '关联资料',
-        artifactsTitle: '把演示、仓库和文档挂到这条笔记下',
-        artifactsSummary: '关联演示、代码仓库、评测表、模型快照或文档，让结论和交付结果放在一起。',
+        artifactsTitle: '把演示、仓库和文档挂到这条笔记下面',
+        artifactsSummary: '让结论和实际产出放在一起，后面回看更完整。',
         remove: '移除',
         noArtifacts: '还没有关联资料。',
         artifactTitle: '资料标题',
@@ -98,15 +120,15 @@ const copy = computed(() =>
           owner: '所有者',
           admin: '管理员',
           member: '成员',
-          viewer: '访客',
+          viewer: '只读',
         },
       }
     : {
         eyebrow: 'Note editor',
-        editTitle: 'Update team note',
-        createTitle: 'Create team note',
-        summaryPrefix: 'Capture the research, decisions, and delivery context in',
-        summarySuffix: 'as one clear record.',
+        editTitle: 'Edit note',
+        createTitle: 'Create note',
+        summaryPrefix: 'Turn the work inside',
+        summarySuffix: 'into one clear note.',
         metrics: {
           role: 'Role',
           words: 'Words',
@@ -128,7 +150,7 @@ const copy = computed(() =>
         loading: 'Loading editor...',
         tagsLabel: 'Tags',
         tagsPlaceholder: 'evaluation, rag, onboarding',
-        nodeLabel: 'Linked roadmap node',
+        nodeLabel: 'Linked node',
         chooseNode: 'Choose a node',
         back: 'Back to notes',
         saving: 'Saving...',
@@ -137,7 +159,7 @@ const copy = computed(() =>
         editorPlaceholder: 'Document background, decisions, experiments, findings, and next actions...',
         artifactsEyebrow: 'Artifacts',
         artifactsTitle: 'Attach demos, repos, and docs to this note',
-        artifactsSummary: 'Link the proof of work so the note and the output stay together.',
+        artifactsSummary: 'Keep the note and the actual output together.',
         remove: 'Remove',
         noArtifacts: 'No linked artifacts yet.',
         artifactTitle: 'Artifact title',
@@ -170,6 +192,84 @@ const artifactTypeOptions = computed(() => [
 ])
 
 const editorLocale = computed(() => (localeStore.isChinese ? 'zh-CN' : 'en-US'))
+const editorEnhancements = computed(() =>
+  localeStore.isChinese
+    ? {
+        saved: '已保存，继续在这里写即可。',
+        draftSaved: '本地草稿已恢复。',
+        draftAvailable: '检测到一份未保存草稿。',
+        restoreDraft: '恢复草稿',
+        discardDraft: '丢弃草稿',
+        templatesTitle: '常用模板',
+        templatesSummary: '把背景、决策、结果和下一步快速插入正文。',
+        contextTitle: '当前节点上下文',
+        leaveConfirm: '这条笔记还有未保存内容，确定现在离开吗？',
+      }
+    : {
+        saved: 'Saved. You can keep writing here.',
+        draftSaved: 'Local draft restored.',
+        draftAvailable: 'A local unsaved draft is available.',
+        restoreDraft: 'Restore draft',
+        discardDraft: 'Discard draft',
+        templatesTitle: 'Common templates',
+        templatesSummary: 'Insert background, decisions, results, and next steps quickly.',
+        contextTitle: 'Current node context',
+        leaveConfirm: 'This note has unsaved changes. Leave this page anyway?',
+      },
+)
+const nodeDescriptionFallback = computed(() => (localeStore.isChinese ? '该节点还没有补充说明。' : 'No description yet.'))
+
+const editorStatusCopy = computed(() =>
+  localeStore.isChinese
+    ? {
+        localDraft: '本地草稿已保存',
+        unsaved: '有未保存修改',
+        synced: '当前内容已保存',
+        shortcut: 'Ctrl/Cmd + S 保存',
+      }
+    : {
+        localDraft: 'Local draft saved',
+        unsaved: 'Unsaved changes',
+        synced: 'All changes saved',
+        shortcut: 'Ctrl/Cmd + S to save',
+      },
+)
+
+const editorStatus = computed(() => {
+  if (!hasWriteAccess.value) {
+    return copy.value.readOnly
+  }
+
+  if (submitting.value) {
+    return copy.value.saving
+  }
+
+  if (localDraftSaved.value && hasUnsavedChanges.value) {
+    return editorStatusCopy.value.localDraft
+  }
+
+  if (hasUnsavedChanges.value) {
+    return editorStatusCopy.value.unsaved
+  }
+
+  return editorStatusCopy.value.synced
+})
+
+const noteTemplates = computed(() =>
+  localeStore.isChinese
+    ? [
+        { key: 'background', label: '背景', content: '\n## 背景\n- 当前背景\n- 关键约束\n' },
+        { key: 'decision', label: '决策', content: '\n## 决策\n- 选择\n- 原因\n- 影响\n' },
+        { key: 'result', label: '结果', content: '\n## 结果\n- 现状\n- 证据\n' },
+        { key: 'next', label: '下一步', content: '\n## 下一步\n- [ ] 下一步动作\n' },
+      ]
+    : [
+        { key: 'background', label: 'Background', content: '\n## Background\n- Context\n- Constraints\n' },
+        { key: 'decision', label: 'Decision', content: '\n## Decision\n- Choice\n- Why it makes sense\n- Impact\n' },
+        { key: 'result', label: 'Result', content: '\n## Result\n- Current outcome\n- Evidence\n' },
+        { key: 'next', label: 'Next step', content: '\n## Next step\n- [ ] Follow-up action\n' },
+      ],
+)
 
 const resetArtifactForm = () => {
   artifactForm.value = {
@@ -179,9 +279,121 @@ const resetArtifactForm = () => {
   }
 }
 
+const syncSavedSnapshot = () => {
+  savedSnapshot.value = JSON.stringify(form.value)
+}
+
+const clearSavedMessage = () => {
+  savedMessage.value = ''
+  if (savedMessageTimer) {
+    window.clearTimeout(savedMessageTimer)
+    savedMessageTimer = null
+  }
+}
+
+const flashSavedMessage = (message: string, duration = 2400) => {
+  clearSavedMessage()
+  savedMessage.value = message
+  savedMessageTimer = window.setTimeout(() => {
+    savedMessage.value = ''
+    savedMessageTimer = null
+  }, duration)
+}
+
+const markLocalDraftSaved = () => {
+  localDraftSaved.value = true
+  if (localDraftSavedTimer) {
+    window.clearTimeout(localDraftSavedTimer)
+  }
+
+  localDraftSavedTimer = window.setTimeout(() => {
+    localDraftSaved.value = false
+    localDraftSavedTimer = null
+  }, 1800)
+}
+
+const clearDraft = () => {
+  localStorage.removeItem(draftStorageKey.value)
+  draftAvailable.value = false
+  localDraftSaved.value = false
+}
+
+const persistDraft = () => {
+  if (!hasWriteAccess.value || !hasUnsavedChanges.value) {
+    if (!hasUnsavedChanges.value) {
+      clearDraft()
+    }
+    return
+  }
+
+  localStorage.setItem(
+    draftStorageKey.value,
+    JSON.stringify({
+      form: form.value,
+      updated_at: new Date().toISOString(),
+    }),
+  )
+  markLocalDraftSaved()
+}
+
+const scheduleDraftPersist = () => {
+  if (draftPersistTimer) {
+    window.clearTimeout(draftPersistTimer)
+  }
+
+  draftPersistTimer = window.setTimeout(() => {
+    persistDraft()
+    draftPersistTimer = null
+  }, 420)
+}
+
+const restoreDraft = () => {
+  const raw = localStorage.getItem(draftStorageKey.value)
+  if (!raw) return
+
+  try {
+    const parsed = JSON.parse(raw) as { form?: typeof form.value }
+    if (parsed.form) {
+      form.value = {
+        title: parsed.form.title ?? '',
+        node_id: parsed.form.node_id ?? null,
+        content: parsed.form.content ?? '',
+        tags: parsed.form.tags ?? '',
+      }
+      draftAvailable.value = false
+      restoringDraft.value = true
+      flashSavedMessage(editorEnhancements.value.draftSaved)
+      window.setTimeout(() => {
+        restoringDraft.value = false
+      }, 0)
+    }
+  } catch {
+    clearDraft()
+  }
+}
+
+const detectDraft = () => {
+  draftAvailable.value = Boolean(localStorage.getItem(draftStorageKey.value))
+}
+
+const insertTemplate = (content: string) => {
+  const trimmed = form.value.content.trimEnd()
+  form.value.content = `${trimmed}${content}${trimmed ? '\n' : ''}`
+}
+
+const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+  if (!hasUnsavedChanges.value || !hasWriteAccess.value) return
+  persistDraft()
+  event.preventDefault()
+  event.returnValue = ''
+}
+
 const loadEditorData = async () => {
   loading.value = true
   errorMessage.value = ''
+  clearSavedMessage()
+  restoringDraft.value = false
+  localDraftSaved.value = false
 
   try {
     nodes.value = await roadmapApi.getNodes()
@@ -197,8 +409,15 @@ const loadEditorData = async () => {
       artifacts.value = data.artifacts
     } else {
       artifacts.value = []
-      form.value = { title: '', node_id: nodes.value[0]?.id ?? null, content: '', tags: '' }
+      const defaultNodeId =
+        presetNodeId.value && nodes.value.some((node) => node.id === presetNodeId.value)
+          ? presetNodeId.value
+          : nodes.value[0]?.id ?? null
+
+      form.value = { title: '', node_id: defaultNodeId, content: '', tags: '' }
     }
+    syncSavedSnapshot()
+    detectDraft()
   } catch (error: any) {
     errorMessage.value = error.message || copy.value.loadError
   } finally {
@@ -207,11 +426,21 @@ const loadEditorData = async () => {
 }
 
 watch(
-  () => authStore.activeWorkspaceId,
+  [() => authStore.activeWorkspaceId, noteId],
   () => {
     loadEditorData()
   },
   { immediate: true }
+)
+
+watch(
+  form,
+  () => {
+    if (!loading.value && !restoringDraft.value) {
+      scheduleDraftPersist()
+    }
+  },
+  { deep: true }
 )
 
 const refreshArtifacts = async () => {
@@ -225,9 +454,7 @@ const refreshArtifacts = async () => {
 }
 
 const handleSave = async () => {
-  if (!hasWriteAccess.value) {
-    return
-  }
+  if (!hasWriteAccess.value) return
 
   if (!form.value.title.trim()) {
     errorMessage.value = copy.value.titleRequired
@@ -255,13 +482,14 @@ const handleSave = async () => {
 
     if (isEditMode.value && noteId.value) {
       await noteApi.updateNote(noteId.value, payload)
+      flashSavedMessage(editorEnhancements.value.saved)
     } else {
       const note = await noteApi.createNote(payload)
       router.push(`/admin/note/edit/${note.id}`)
       return
     }
-
-    router.push('/admin/notes')
+    syncSavedSnapshot()
+    clearDraft()
   } catch (error: any) {
     errorMessage.value = error.message || copy.value.saveError
   } finally {
@@ -270,9 +498,7 @@ const handleSave = async () => {
 }
 
 const addArtifact = async () => {
-  if (!hasWriteAccess.value || !noteId.value) {
-    return
-  }
+  if (!hasWriteAccess.value || !noteId.value) return
 
   if (!artifactForm.value.title.trim() || !artifactForm.value.content_url.trim()) {
     errorMessage.value = copy.value.attachValidation
@@ -299,14 +525,10 @@ const addArtifact = async () => {
 }
 
 const deleteArtifact = async (artifact: Artifact) => {
-  if (!hasWriteAccess.value) {
-    return
-  }
+  if (!hasWriteAccess.value) return
 
   const confirmed = window.confirm(`${copy.value.removeConfirmPrefix}${artifact.title}${copy.value.removeConfirmSuffix}`)
-  if (!confirmed) {
-    return
-  }
+  if (!confirmed) return
 
   errorMessage.value = ''
 
@@ -321,186 +543,287 @@ const deleteArtifact = async (artifact: Artifact) => {
 const cancelEditing = () => {
   router.push('/admin/notes')
 }
+
+const handleKeydown = (event: KeyboardEvent) => {
+  if (!hasWriteAccess.value || loading.value) return
+
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+    event.preventDefault()
+    if (!submitting.value) {
+      void handleSave()
+    }
+  }
+}
+
+onBeforeRouteLeave(() => {
+  if (!hasUnsavedChanges.value || !hasWriteAccess.value) {
+    return true
+  }
+
+  return window.confirm(editorEnhancements.value.leaveConfirm)
+})
+
+watch(
+  () => draftStorageKey.value,
+  () => {
+    detectDraft()
+  }
+)
+
+watch(
+  presetNodeId,
+  (value) => {
+    if (isEditMode.value || !value) return
+    if (nodes.value.some((node) => node.id === value)) {
+      form.value.node_id = value
+    }
+  }
+)
+
+watch(
+  () => hasUnsavedChanges.value,
+  (value) => {
+    if (!value) {
+      clearDraft()
+    }
+  }
+)
+
+onMounted(() => {
+  window.addEventListener('beforeunload', handleBeforeUnload)
+  window.addEventListener('keydown', handleKeydown)
+})
+
+onBeforeUnmount(() => {
+  if (draftPersistTimer) {
+    window.clearTimeout(draftPersistTimer)
+  }
+  if (localDraftSavedTimer) {
+    window.clearTimeout(localDraftSavedTimer)
+  }
+  clearSavedMessage()
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+  window.removeEventListener('keydown', handleKeydown)
+})
 </script>
 
 <template>
-  <div class="min-h-screen bg-[linear-gradient(180deg,#faf7f0_0%,#f4f1eb_100%)]">
-    <div class="mx-auto max-w-[1500px] px-6 py-8 lg:px-10">
-      <div class="rounded-[2rem] border border-[rgba(20,33,43,0.08)] bg-[rgba(255,251,245,0.84)] shadow-[0_24px_70px_rgba(20,33,43,0.05)]">
-        <div class="border-b border-[rgba(20,33,43,0.08)] px-8 py-7">
-          <div class="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
-            <div class="max-w-3xl">
-              <div class="product-eyebrow border border-[rgba(216,110,59,0.14)] bg-white/80 text-[var(--brand)]">
-                <span class="h-2.5 w-2.5 rounded-full bg-[var(--brand)]"></span>
-                {{ copy.eyebrow }}
-              </div>
-              <h1 class="product-title mt-6 text-4xl leading-[0.96] md:text-5xl">
-                {{ isEditMode ? copy.editTitle : copy.createTitle }}
-              </h1>
-              <p class="mt-4 text-base leading-8 text-[var(--ink-soft)]">
-                {{ copy.summaryPrefix }}
-                <span class="font-black text-[var(--ink-strong)]">{{ currentWorkspace?.workspace_name }}</span>
-                {{ copy.summarySuffix }}
-              </p>
-            </div>
-
-            <div class="grid gap-3 sm:grid-cols-3 xl:min-w-[24rem]">
-              <article class="metric-card">
-                <div class="metric-label">{{ copy.metrics.role }}</div>
-                <div class="metric-value">{{ copy.roleLabels[currentRole] }}</div>
-              </article>
-              <article class="metric-card">
-                <div class="metric-label">{{ copy.metrics.words }}</div>
-                <div class="metric-value">{{ noteWordCount }}</div>
-              </article>
-              <article class="metric-card">
-                <div class="metric-label">{{ copy.metrics.artifacts }}</div>
-                <div class="metric-value">{{ artifacts.length }}</div>
-              </article>
-            </div>
+  <div class="min-h-screen bg-[linear-gradient(180deg,#fafaf8_0%,#f4f6f8_100%)]">
+    <div class="mx-auto max-w-7xl px-6 py-8">
+      <section class="rounded-[2rem] border border-[rgba(15,23,42,0.08)] bg-[rgba(255,255,255,0.82)] p-8 shadow-[0_18px_50px_rgba(20,33,43,0.05)]">
+        <div class="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div class="max-w-3xl">
+            <div class="admin-kicker">{{ copy.eyebrow }}</div>
+            <h1 class="admin-headline mt-3">{{ isEditMode ? copy.editTitle : copy.createTitle }}</h1>
+            <p class="admin-subtitle mt-5">
+              {{ copy.summaryPrefix }}
+              <span class="font-semibold text-[var(--ink-strong)]">{{ currentWorkspace?.workspace_name }}</span>
+              {{ copy.summarySuffix }}
+            </p>
           </div>
 
-          <div class="mt-6 flex flex-wrap items-center gap-3">
-            <span class="pill">{{ currentNode ? currentNode.title : copy.noNode }}</span>
-            <span :class="hasWriteAccess ? 'pill pill-brand' : 'pill'" class="!uppercase">
-              {{ hasWriteAccess ? copy.editingEnabled : copy.readOnly }}
-            </span>
+          <div class="grid gap-3 sm:grid-cols-3 xl:min-w-[24rem]">
+            <article class="admin-kpi-card">
+              <div class="admin-kpi-label">{{ copy.metrics.role }}</div>
+              <div class="admin-kpi-value !text-[2rem]">{{ copy.roleLabels[currentRole] }}</div>
+            </article>
+            <article class="admin-kpi-card">
+              <div class="admin-kpi-label">{{ copy.metrics.words }}</div>
+              <div class="admin-kpi-value !text-[2rem]">{{ noteWordCount }}</div>
+            </article>
+            <article class="admin-kpi-card">
+              <div class="admin-kpi-label">{{ copy.metrics.artifacts }}</div>
+              <div class="admin-kpi-value !text-[2rem]">{{ artifacts.length }}</div>
+            </article>
           </div>
         </div>
 
-        <div v-if="errorMessage" class="border-b border-[rgba(187,45,59,0.12)] bg-[rgba(187,45,59,0.08)] px-8 py-4 text-sm font-semibold text-[var(--danger)]">
-          {{ errorMessage }}
+        <div class="mt-6 flex flex-wrap items-center gap-3">
+          <span class="admin-chip">{{ currentNode ? currentNode.title : copy.noNode }}</span>
+          <span :class="hasWriteAccess ? 'admin-chip-dark' : 'admin-chip'">
+            {{ hasWriteAccess ? copy.editingEnabled : copy.readOnly }}
+          </span>
         </div>
+      </section>
 
-        <div v-if="!hasWriteAccess" class="border-b border-[rgba(216,110,59,0.12)] bg-[rgba(216,110,59,0.08)] px-8 py-4 text-sm font-semibold text-[var(--brand-deep)]">
-          {{ copy.readonlyHint }}
-        </div>
+      <div v-if="errorMessage" class="product-error mt-5 px-5 py-4 text-sm font-semibold">
+        {{ errorMessage }}
+      </div>
 
-        <div v-if="loading" class="px-8 py-20 text-center text-sm font-semibold text-[var(--ink-soft)]">
-          {{ copy.loading }}
-        </div>
+      <div v-if="savedMessage" class="mt-5 rounded-[18px] bg-[rgba(37,99,235,0.08)] px-5 py-4 text-sm font-semibold text-[var(--accent)]">
+        {{ savedMessage }}
+      </div>
 
-        <div v-else class="grid min-h-[calc(100vh-14rem)] xl:grid-cols-[minmax(0,1fr)_330px]">
-          <main class="border-r border-[rgba(20,33,43,0.08)]">
-            <div class="border-b border-[rgba(20,33,43,0.08)] px-8 py-6">
-              <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                <div class="flex-1">
-                  <input
-                    v-model="form.title"
-                    :disabled="!hasWriteAccess"
-                    type="text"
-                    :placeholder="copy.titleRequired"
-                    class="title-input w-full"
-                  />
-                  <div class="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_260px]">
-                    <div class="space-y-2">
-                      <label class="field-label">{{ copy.tagsLabel }}</label>
-                      <input v-model="form.tags" :disabled="!hasWriteAccess" type="text" class="product-input" :placeholder="copy.tagsPlaceholder" />
-                    </div>
-                    <div class="space-y-2">
-                      <label class="field-label">{{ copy.nodeLabel }}</label>
-                      <select v-model="form.node_id" :disabled="!hasWriteAccess" class="product-input">
-                        <option :value="null">{{ copy.chooseNode }}</option>
-                        <option v-for="node in nodes" :key="node.id" :value="node.id">{{ node.title }}</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
+      <div v-if="draftAvailable && hasWriteAccess" class="mt-5 flex flex-wrap items-center gap-3 rounded-[18px] bg-[rgba(15,23,42,0.06)] px-5 py-4 text-sm font-semibold text-[var(--ink-main)]">
+        <span>{{ editorEnhancements.draftAvailable }}</span>
+        <button class="text-[var(--brand)]" type="button" @click="restoreDraft">{{ editorEnhancements.restoreDraft }}</button>
+        <button class="text-[var(--danger)]" type="button" @click="clearDraft">{{ editorEnhancements.discardDraft }}</button>
+      </div>
 
-                <div class="flex flex-wrap items-center gap-3">
-                  <button class="product-button-secondary" type="button" @click="cancelEditing">{{ copy.back }}</button>
-                  <button class="product-button-primary" :disabled="!hasWriteAccess || submitting" type="button" @click="handleSave">
-                    {{ submitting ? copy.saving : isEditMode ? copy.saveChanges : copy.createNote }}
-                  </button>
-                </div>
-              </div>
+      <div v-if="!hasWriteAccess" class="mt-5 rounded-[18px] bg-[rgba(229,106,43,0.08)] px-5 py-4 text-sm font-semibold text-[var(--brand-deep)]">
+        {{ copy.readonlyHint }}
+      </div>
+
+      <div v-if="loading" class="admin-empty mt-6">
+        {{ copy.loading }}
+      </div>
+
+      <div v-else class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <main class="space-y-6">
+          <section class="admin-card p-6">
+            <div class="flex flex-wrap items-center gap-3">
+              <div class="text-[11px] font-black uppercase tracking-[0.18em] text-[var(--brand)]">{{ editorEnhancements.contextTitle }}</div>
+              <span class="admin-chip">{{ currentNode ? currentNode.title : copy.noNode }}</span>
             </div>
+            <p class="mt-3 text-sm leading-7 text-[var(--ink-soft)]">
+              {{ currentNode?.description || nodeDescriptionFallback }}
+            </p>
+          </section>
 
-            <div class="h-[calc(100vh-22rem)] min-h-[36rem] overflow-hidden p-6">
-              <div class="h-full overflow-hidden rounded-[1.6rem] border border-[rgba(20,33,43,0.08)] bg-white shadow-[0_14px_36px_rgba(20,33,43,0.04)]">
-                <MdEditor
-                  v-model="form.content"
-                  :language="editorLocale"
-                  theme="light"
-                  :preview="true"
-                  :toolbarsExclude="!hasWriteAccess ? ['save'] : []"
-                  :readOnly="!hasWriteAccess"
-                  :placeholder="copy.editorPlaceholder"
-                  class="h-full border-none!"
+          <section class="admin-card p-6">
+            <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+              <div class="min-w-0 flex-1">
+                <input
+                  v-model="form.title"
+                  :disabled="!hasWriteAccess"
+                  type="text"
+                  :placeholder="copy.titleRequired"
+                  class="title-input w-full"
                 />
               </div>
-            </div>
-          </main>
 
-          <aside class="flex flex-col bg-[rgba(255,255,255,0.32)]">
-            <div class="border-b border-[rgba(20,33,43,0.08)] px-6 py-6">
-              <div class="text-[11px] font-black uppercase tracking-[0.28em] text-[var(--brand)]">{{ copy.artifactsEyebrow }}</div>
-              <h2 class="mt-3 text-2xl font-black tracking-[-0.04em] text-[var(--ink-strong)]">{{ copy.artifactsTitle }}</h2>
-              <p class="mt-3 text-sm leading-7 text-[var(--ink-soft)]">{{ copy.artifactsSummary }}</p>
-            </div>
-
-            <div class="flex-1 overflow-y-auto px-6 py-6">
-              <div class="space-y-4">
-                <article
-                  v-for="artifact in artifacts"
-                  :key="artifact.id"
-                  class="rounded-[1.4rem] border border-[rgba(20,33,43,0.08)] bg-white p-5 shadow-[0_10px_24px_rgba(20,33,43,0.04)]"
-                >
-                  <div class="flex items-start justify-between gap-4">
-                    <div>
-                      <div class="text-[10px] font-black uppercase tracking-[0.22em] text-[var(--accent)]">
-                        {{ copy.artifactTypes[artifact.artifact_type as keyof typeof copy.artifactTypes] || artifact.artifact_type }}
-                      </div>
-                      <div class="mt-2 text-base font-black tracking-tight text-[var(--ink-strong)]">{{ artifact.title }}</div>
-                    </div>
-                    <button v-if="hasWriteAccess" class="text-[11px] font-black text-[var(--danger)]" type="button" @click="deleteArtifact(artifact)">
-                      {{ copy.remove }}
-                    </button>
-                  </div>
-                  <a
-                    :href="artifact.content_url"
-                    target="_blank"
-                    class="mt-4 block break-all text-sm font-semibold text-[var(--ink-soft)] underline decoration-[rgba(20,33,43,0.16)] underline-offset-4 hover:text-[var(--brand)]"
-                  >
-                    {{ artifact.content_url }}
-                  </a>
-                </article>
-
-                <div v-if="artifacts.length === 0" class="rounded-[1.4rem] border border-dashed border-[rgba(20,33,43,0.12)] bg-white/70 px-4 py-8 text-center text-sm font-semibold text-[var(--ink-soft)]">
-                  {{ copy.noArtifacts }}
-                </div>
-              </div>
-            </div>
-
-            <div v-if="hasWriteAccess" class="border-t border-[rgba(20,33,43,0.08)] bg-white px-6 py-6">
-              <div class="space-y-4">
-                <div class="space-y-2">
-                  <label class="field-label">{{ copy.artifactTitle }}</label>
-                  <input
-                    v-model="artifactForm.title"
-                    :disabled="!noteId"
-                    type="text"
-                    class="product-input"
-                    :placeholder="copy.artifactTitlePlaceholder"
-                  />
-                </div>
-                <div class="space-y-2">
-                  <label class="field-label">{{ copy.artifactType }}</label>
-                  <select v-model="artifactForm.artifact_type" :disabled="!noteId" class="product-input">
-                    <option v-for="item in artifactTypeOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
-                  </select>
-                </div>
-                <div class="space-y-2">
-                  <label class="field-label">{{ copy.artifactUrl }}</label>
-                  <input v-model="artifactForm.content_url" :disabled="!noteId" type="text" class="product-input" placeholder="https://..." />
-                </div>
-                <button class="product-button-primary w-full" :disabled="!noteId || artifactSubmitting" type="button" @click="addArtifact">
-                  {{ artifactSubmitting ? copy.attaching : noteId ? copy.attachArtifact : copy.saveFirst }}
+              <div class="flex flex-wrap items-center gap-3">
+                <button class="product-button-secondary" type="button" @click="cancelEditing">{{ copy.back }}</button>
+                <button class="product-button-dark" :disabled="!hasWriteAccess || submitting" type="button" @click="handleSave">
+                  {{ submitting ? copy.saving : isEditMode ? copy.saveChanges : copy.createNote }}
                 </button>
               </div>
             </div>
-          </aside>
-        </div>
+
+            <div class="mt-5 grid gap-4 md:grid-cols-[minmax(0,1fr)_260px]">
+              <div class="space-y-2">
+                <label class="product-label">{{ copy.tagsLabel }}</label>
+                <input v-model="form.tags" :disabled="!hasWriteAccess" type="text" class="admin-input" :placeholder="copy.tagsPlaceholder" />
+              </div>
+              <div class="space-y-2">
+                <label class="product-label">{{ copy.nodeLabel }}</label>
+                <select v-model="form.node_id" :disabled="!hasWriteAccess" class="admin-select">
+                  <option :value="null">{{ copy.chooseNode }}</option>
+                  <option v-for="node in nodeOptions" :key="node.id" :value="node.id">{{ node.label }}</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-[18px] bg-[rgba(15,23,42,0.04)] px-4 py-3 text-sm font-semibold text-[var(--ink-main)]">
+              <span>{{ editorStatus }}</span>
+              <span class="text-[var(--ink-soft)]">{{ editorStatusCopy.shortcut }}</span>
+            </div>
+          </section>
+
+          <section class="admin-card p-6">
+            <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+              <div>
+                <div class="text-[11px] font-black uppercase tracking-[0.18em] text-[var(--brand)]">{{ editorEnhancements.templatesTitle }}</div>
+                <p class="mt-3 text-sm leading-7 text-[var(--ink-soft)]">{{ editorEnhancements.templatesSummary }}</p>
+              </div>
+
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-for="template in noteTemplates"
+                  :key="template.key"
+                  class="product-button-secondary !px-4 !py-2.5"
+                  type="button"
+                  :disabled="!hasWriteAccess"
+                  @click="insertTemplate(template.content)"
+                >
+                  {{ template.label }}
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section class="admin-card overflow-hidden p-0">
+            <div class="h-[calc(100vh-22rem)] min-h-[36rem] overflow-hidden">
+              <MdEditor
+                v-model="form.content"
+                :language="editorLocale"
+                theme="light"
+                :preview="true"
+                :toolbarsExclude="!hasWriteAccess ? ['save'] : []"
+                :readOnly="!hasWriteAccess"
+                :placeholder="copy.editorPlaceholder"
+                class="h-full border-none!"
+              />
+            </div>
+          </section>
+        </main>
+
+        <aside class="space-y-6">
+          <section class="admin-card p-6">
+            <div class="text-[11px] font-black uppercase tracking-[0.24em] text-[var(--brand)]">{{ copy.artifactsEyebrow }}</div>
+            <h2 class="mt-3 text-2xl font-black tracking-[-0.04em] text-[var(--ink-strong)]">{{ copy.artifactsTitle }}</h2>
+            <p class="mt-3 text-sm leading-7 text-[var(--ink-soft)]">{{ copy.artifactsSummary }}</p>
+
+            <div class="mt-5 space-y-4">
+              <article
+                v-for="artifact in artifacts"
+                :key="artifact.id"
+                class="rounded-[1.4rem] border border-[rgba(15,23,42,0.08)] bg-[rgba(247,247,245,0.86)] p-4"
+              >
+                <div class="flex items-start justify-between gap-4">
+                  <div>
+                    <div class="text-[10px] font-black uppercase tracking-[0.22em] text-[var(--accent)]">
+                      {{ copy.artifactTypes[artifact.artifact_type as keyof typeof copy.artifactTypes] || artifact.artifact_type }}
+                    </div>
+                    <div class="mt-2 text-base font-semibold tracking-[-0.02em] text-[var(--ink-strong)]">{{ artifact.title }}</div>
+                  </div>
+                  <button v-if="hasWriteAccess" class="text-[11px] font-bold text-[var(--danger)]" type="button" @click="deleteArtifact(artifact)">
+                    {{ copy.remove }}
+                  </button>
+                </div>
+                <a
+                  :href="artifact.content_url"
+                  target="_blank"
+                  class="mt-4 block break-all text-sm leading-7 text-[var(--ink-soft)] underline decoration-[rgba(15,23,42,0.16)] underline-offset-4 hover:text-[var(--brand)]"
+                >
+                  {{ artifact.content_url }}
+                </a>
+              </article>
+
+              <div v-if="artifacts.length === 0" class="admin-empty !p-8">
+                {{ copy.noArtifacts }}
+              </div>
+            </div>
+          </section>
+
+          <section v-if="hasWriteAccess" class="admin-card p-6">
+            <div class="space-y-4">
+              <div class="space-y-2">
+                <label class="product-label">{{ copy.artifactTitle }}</label>
+                <input
+                  v-model="artifactForm.title"
+                  :disabled="!noteId"
+                  type="text"
+                  class="admin-input"
+                  :placeholder="copy.artifactTitlePlaceholder"
+                />
+              </div>
+              <div class="space-y-2">
+                <label class="product-label">{{ copy.artifactType }}</label>
+                <select v-model="artifactForm.artifact_type" :disabled="!noteId" class="admin-select">
+                  <option v-for="item in artifactTypeOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
+                </select>
+              </div>
+              <div class="space-y-2">
+                <label class="product-label">{{ copy.artifactUrl }}</label>
+                <input v-model="artifactForm.content_url" :disabled="!noteId" type="text" class="admin-input" placeholder="https://..." />
+              </div>
+              <button class="product-button-dark w-full" :disabled="!noteId || artifactSubmitting" type="button" @click="addArtifact">
+                {{ artifactSubmitting ? copy.attaching : noteId ? copy.attachArtifact : copy.saveFirst }}
+              </button>
+            </div>
+          </section>
+        </aside>
       </div>
     </div>
   </div>
@@ -509,31 +832,7 @@ const cancelEditing = () => {
 <style lang="postcss" scoped>
 @reference "@/style.css";
 
-.metric-card {
-  @apply rounded-[1.4rem] border border-[rgba(20,33,43,0.08)] bg-white/80 px-4 py-4 shadow-[0_10px_24px_rgba(20,33,43,0.04)];
-}
-
-.metric-label {
-  @apply text-[10px] font-black uppercase tracking-[0.22em] text-[var(--ink-soft)];
-}
-
-.metric-value {
-  @apply mt-3 font-[var(--font-display)] text-2xl font-black tracking-[-0.05em] text-[var(--ink-strong)];
-}
-
-.pill {
-  @apply inline-flex rounded-full bg-[rgba(20,33,43,0.06)] px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-[var(--ink-main)];
-}
-
-.pill-brand {
-  @apply bg-[rgba(216,110,59,0.12)] text-[var(--brand)];
-}
-
-.field-label {
-  @apply text-[11px] font-black uppercase tracking-[0.24em] text-[var(--ink-soft)];
-}
-
 .title-input {
-  @apply bg-transparent text-4xl font-[var(--font-display)] font-black tracking-[-0.05em] text-[var(--ink-strong)] outline-none placeholder:text-[rgba(20,33,43,0.28)];
+  @apply bg-transparent text-4xl font-[var(--font-display)] font-black tracking-[-0.05em] text-[var(--ink-strong)] outline-none placeholder:text-[rgba(15,23,42,0.28)];
 }
 </style>
