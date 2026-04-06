@@ -5,7 +5,8 @@
       "Read(//c/Users/brace/.claude/plans/**)"
     ],
     "additionalDirectories": [
-      "c:\\Users\\brace\\.claude\\plans"
+      "c:\\Users\\brace\\.claude\\plans",
+      "c:\\Users\\brace\\Documents\\work\\ai\\llm-tracker-backend\\src\\services"
     ]
   }
 }

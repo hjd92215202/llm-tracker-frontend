@@ -19,72 +19,72 @@ const inviteLink = ref<WorkspaceInviteLink | null>(null)
 const copy = computed(() =>
   localeStore.isChinese
     ? {
-        kicker: '成员',
-        title: '成员管理',
-        summary: '只处理两件事：邀请加入，以及管理当前空间的成员权限。',
-        inviteTitle: '邀请加入',
-        inviteHint: '生成链接发给对方，对方打开后可直接注册并加入当前空间。',
-        inviteAction: '生成邀请链接',
+        kicker: '成员管理',
+        title: '协作团队',
+        summary: '管理当前空间的成员访问权限，或生成邀请链接邀请新成员加入。',
+        inviteTitle: '快速邀请',
+        inviteHint: '选择一个角色并生成邀请链接，发送给协作者即可。',
+        inviteAction: '生成链接',
         inviteGenerating: '生成中...',
         inviteLinkLabel: '邀请链接',
-        inviteLinkEmpty: '生成后显示在这里',
-        inviteRoleLabel: '加入身份',
-        inviteFlowHint: '新成员打开链接后，可以直接加入当前空间，无需你手动再分配。',
+        inviteLinkEmpty: '链接生成后在此显示',
+        inviteRoleLabel: '授予身份',
+        inviteFlowHint: '协作者打开链接后将直接加入此空间。',
         copyInvite: '复制链接',
-        copied: '链接已复制',
-        inviteExpires: '链接 7 天后失效',
-        membersTitle: '成员',
-        membersHint: '成员列表只保留必要信息和权限操作。',
-        manageEnabled: '可管理',
-        readOnly: '只读',
-        loading: '正在加载成员...',
-        noMembers: '当前还没有其他成员。',
-        inviteError: '生成邀请链接失败',
-        updateError: '更新成员角色失败',
+        copied: '链接已成功复制',
+        inviteExpires: '邀请链接有效期为 7 天',
+        membersTitle: '空间成员',
+        membersHint: '当前所有可以访问此空间的人员列表。',
+        manageEnabled: '管理模式',
+        readOnly: '只读模式',
+        loading: '正在获取成员列表...',
+        noMembers: '暂无其他协作成员。',
+        inviteError: '邀请链接生成失败',
+        updateError: '角色更新失败',
         removeError: '移除成员失败',
-        protectedOwner: '至少保留一位所有者。',
-        selfHint: '不能在这里移除自己。',
-        ownerOnlyHint: '只有所有者可以调整所有者角色。',
-        removeConfirm: '确认将 {name} 从 {workspace} 中移除吗？',
+        protectedOwner: '空间必须保留至少一位所有者',
+        selfHint: '无法对自己进行移除操作',
+        ownerOnlyHint: '仅所有者可调整其他所有者的权限',
+        removeConfirm: '确定要将 {name} 从 {workspace} 中移除吗？',
         remove: '移除',
-        joinedAt: '加入时间',
-        totalMembers: '成员',
-        youBadge: '你',
+        joinedAt: '加入于',
+        totalMembers: '位成员',
+        youBadge: '我',
         currentWorkspace: '当前空间',
       }
     : {
         kicker: 'Members',
-        title: 'Member management',
-        summary: 'Keep this page focused on two jobs: inviting people and managing access in the current workspace.',
-        inviteTitle: 'Invite people',
-        inviteHint: 'Send the link and they can register or join this workspace directly.',
-        inviteAction: 'Generate invite link',
+        title: 'Team Access',
+        summary: 'Manage who can access this workspace and their permission levels.',
+        inviteTitle: 'Quick Invite',
+        inviteHint: 'Choose a role and generate a link to invite new collaborators.',
+        inviteAction: 'Generate Link',
         inviteGenerating: 'Generating...',
-        inviteLinkLabel: 'Invite link',
-        inviteLinkEmpty: 'The link appears here after generation',
-        inviteRoleLabel: 'Role',
-        inviteFlowHint: 'New members can join from this link directly without a separate manual setup.',
-        copyInvite: 'Copy link',
-        copied: 'Link copied',
-        inviteExpires: 'The link expires in 7 days',
-        membersTitle: 'Members',
-        membersHint: 'Keep only the member info and permission controls that matter.',
-        manageEnabled: 'Can manage',
-        readOnly: 'Read only',
-        loading: 'Loading members...',
-        noMembers: 'There are no other members yet.',
-        inviteError: 'Unable to generate invite link',
-        updateError: 'Unable to update member role',
-        removeError: 'Unable to remove member',
-        protectedOwner: 'At least one owner must remain.',
-        selfHint: 'You cannot remove yourself here.',
-        ownerOnlyHint: 'Only an owner can change another owner role.',
+        inviteLinkLabel: 'Invite Link',
+        inviteLinkEmpty: 'Link will appear here',
+        inviteRoleLabel: 'Assign Role',
+        inviteFlowHint: 'Collaborators can join directly via this link.',
+        copyInvite: 'Copy Link',
+        copied: 'Link copied to clipboard',
+        inviteExpires: 'Link expires in 7 days',
+        membersTitle: 'Workspace Members',
+        membersHint: 'List of all people who have access to this workspace.',
+        manageEnabled: 'Manager',
+        readOnly: 'Read Only',
+        loading: 'Fetching members...',
+        noMembers: 'No other members yet.',
+        inviteError: 'Failed to generate link',
+        updateError: 'Failed to update role',
+        removeError: 'Failed to remove member',
+        protectedOwner: 'At least one owner is required',
+        selfHint: 'You cannot remove yourself',
+        ownerOnlyHint: 'Only owners can modify other owner roles',
         removeConfirm: 'Remove {name} from {workspace}?',
         remove: 'Remove',
         joinedAt: 'Joined',
         totalMembers: 'Members',
         youBadge: 'You',
-        currentWorkspace: 'Current workspace',
+        currentWorkspace: 'Workspace',
       },
 )
 
@@ -98,7 +98,7 @@ const roleLabel = computed<Record<WorkspaceRole, string>>(() =>
         owner: '所有者',
         admin: '管理员',
         member: '成员',
-        viewer: '只读',
+        viewer: '访客',
       }
     : {
         owner: 'Owner',
@@ -238,83 +238,96 @@ watch(
 
 <template>
   <div class="admin-page">
-    <header class="max-w-4xl">
+    <header class="max-w-4xl mb-8">
       <div class="admin-kicker">{{ copy.kicker }}</div>
       <h1 class="admin-headline mt-3">{{ copy.title }}</h1>
-      <p class="admin-subtitle mt-5">{{ copy.summary }}</p>
+      <p class="admin-subtitle mt-4">{{ copy.summary }}</p>
 
-      <div class="mt-5 flex flex-wrap gap-2">
-        <span class="workspace-meta-pill workspace-meta-pill-dark">
-          {{ copy.currentWorkspace }} {{ currentWorkspace?.workspace_name || '--' }}
-        </span>
-        <span class="workspace-meta-pill">
-          {{ copy.totalMembers }} {{ members.length }}
-        </span>
+      <div class="mt-6 flex flex-wrap gap-3">
+        <div class="admin-chip-dark !px-4 !py-2">
+          <span class="opacity-60 mr-2">{{ copy.currentWorkspace }}</span>
+          <span class="font-bold">{{ currentWorkspace?.workspace_name || '--' }}</span>
+        </div>
+        <div class="admin-chip !px-4 !py-2">
+          <span class="font-bold mr-1">{{ members.length }}</span>
+          <span class="opacity-60">{{ copy.totalMembers }}</span>
+        </div>
       </div>
     </header>
 
-    <div v-if="errorMessage" class="product-error mt-5 px-5 py-4 text-sm font-semibold">
+    <div v-if="errorMessage" class="product-error mb-6 px-5 py-4 text-sm font-bold shadow-sm">
       {{ errorMessage }}
     </div>
 
-    <section class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
-      <div>
-        <article class="admin-card p-6 md:p-7">
-          <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+    <section class="grid gap-8 xl:grid-cols-[1fr_360px] items-start">
+      <!-- 成员列表 -->
+      <div class="space-y-6">
+        <article class="admin-card p-6 md:p-8">
+          <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-8">
             <div>
-              <div class="admin-card-title">{{ copy.membersTitle }}</div>
-              <p class="admin-card-copy">{{ copy.membersHint }}</p>
+              <h2 class="admin-card-title text-xl">{{ copy.membersTitle }}</h2>
+              <p class="admin-card-copy mt-1">{{ copy.membersHint }}</p>
             </div>
-            <span :class="canManageMembers ? 'workspace-side-pill workspace-side-pill-dark' : 'workspace-side-pill'">
+            <div :class="canManageMembers ? 'admin-chip-green' : 'admin-chip'" class="!px-4 !py-2 font-bold">
               {{ canManageMembers ? copy.manageEnabled : copy.readOnly }}
-            </span>
+            </div>
           </div>
 
-          <div v-if="loadingMembers" class="admin-empty mt-5">
-            {{ copy.loading }}
+          <div v-if="loadingMembers" class="admin-empty py-16">
+            <div class="animate-pulse flex flex-col items-center">
+              <div class="h-4 w-32 bg-gray-200 rounded mb-4"></div>
+              <div class="text-sm">{{ copy.loading }}</div>
+            </div>
           </div>
 
-          <div v-else-if="members.length === 0" class="admin-empty mt-5">
+          <div v-else-if="members.length === 0" class="admin-empty py-16">
             {{ copy.noMembers }}
           </div>
 
-          <div v-else class="mt-5 space-y-3">
-            <article v-for="member in members" :key="member.user_id" class="member-card">
-              <div class="member-avatar">
-                {{ member.username?.charAt(0)?.toUpperCase() || 'U' }}
+          <div v-else class="space-y-4">
+            <article v-for="member in members" :key="member.user_id" 
+              class="member-row group transition-all duration-200 border border-transparent hover:border-[rgba(15,23,42,0.08)] hover:bg-[rgba(15,23,42,0.02)] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+              
+              <div class="flex items-center gap-4 flex-1">
+                <div class="member-avatar-box">
+                  {{ member.username?.charAt(0)?.toUpperCase() || 'U' }}
+                </div>
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span class="text-base font-bold text-[var(--ink-strong)] truncate">{{ member.username }}</span>
+                    <span v-if="member.user_id === authStore.userId" class="admin-chip-dark !text-[10px] !px-2 !py-0.5">
+                      {{ copy.youBadge }}
+                    </span>
+                  </div>
+                  <div class="text-xs text-[var(--ink-soft)] mt-0.5 truncate">{{ member.email }}</div>
+                </div>
               </div>
 
-              <div class="min-w-0 flex-1">
-                <div class="flex flex-wrap items-center gap-2">
-                  <div class="text-base font-semibold text-[var(--ink-strong)]">{{ member.username }}</div>
-                  <span class="workspace-meta-pill">{{ roleLabel[member.role] }}</span>
-                  <span v-if="member.user_id === authStore.userId" class="workspace-meta-pill workspace-meta-pill-dark">
-                    {{ copy.youBadge }}
-                  </span>
+              <div class="flex flex-wrap items-center gap-3 sm:justify-end">
+                <div class="flex flex-col items-end mr-2 hidden md:flex">
+                  <span class="text-[10px] uppercase tracking-wider text-[var(--ink-soft)] font-bold">{{ copy.joinedAt }}</span>
+                  <span class="text-xs font-semibold">{{ formatDate(member.joined_at) }}</span>
                 </div>
-                <div class="mt-1 text-xs text-[var(--ink-soft)]">
-                  {{ member.email }} · {{ copy.joinedAt }} {{ formatDate(member.joined_at) }}
-                </div>
-                <p v-if="memberHint(member)" class="mt-2 text-sm text-[var(--danger)]">{{ memberHint(member) }}</p>
-              </div>
 
-              <div class="member-actions">
-                <select
-                  :value="member.role"
-                  class="admin-select !min-w-[148px]"
-                  :disabled="!canEditMemberRole(member)"
-                  @change="updateRole(member, ($event.target as HTMLSelectElement).value as WorkspaceRole)"
-                >
-                  <option v-for="role in roleOptions" :key="role" :value="role">
-                    {{ roleLabel[role] }}
-                  </option>
-                </select>
+                <div class="relative min-w-[130px]">
+                  <select
+                    :value="member.role"
+                    class="role-select"
+                    :disabled="!canEditMemberRole(member)"
+                    @change="updateRole(member, ($event.target as HTMLSelectElement).value as WorkspaceRole)"
+                  >
+                    <option v-for="role in roleOptions" :key="role" :value="role">
+                      {{ roleLabel[role] }}
+                    </option>
+                  </select>
+                </div>
 
                 <button
-                  class="text-sm font-semibold"
-                  :class="canRemoveMember(member) ? 'text-[var(--danger)]' : 'cursor-not-allowed text-[rgba(15,23,42,0.28)]'"
+                  class="remove-btn"
+                  :class="canRemoveMember(member) ? 'remove-btn-active' : 'remove-btn-disabled'"
                   type="button"
                   :disabled="!canRemoveMember(member)"
+                  :title="memberHint(member)"
                   @click="removeMember(member)"
                 >
                   {{ copy.remove }}
@@ -325,30 +338,36 @@ watch(
         </article>
       </div>
 
-      <div class="space-y-6 xl:sticky xl:top-4">
-        <article class="admin-card p-6">
-          <div class="flex flex-col gap-3">
-            <div class="flex items-center justify-between gap-3">
-              <div class="admin-card-title">{{ copy.inviteTitle }}</div>
-              <span :class="canManageMembers ? 'workspace-side-pill workspace-side-pill-dark' : 'workspace-side-pill'">
-                {{ canManageMembers ? copy.manageEnabled : copy.readOnly }}
-              </span>
-            </div>
-            <p class="text-sm leading-7 text-[var(--ink-soft)]">{{ copy.inviteHint }}</p>
+      <!-- 侧边邀请栏 -->
+      <aside class="space-y-6">
+        <article class="admin-card overflow-hidden">
+          <div class="p-6 md:p-8 bg-[rgba(229,106,43,0.03)] border-b border-[rgba(229,106,43,0.08)]">
+            <h2 class="admin-card-title text-lg flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-[var(--brand)]"></span>
+              {{ copy.inviteTitle }}
+            </h2>
+            <p class="text-sm leading-relaxed text-[var(--ink-soft)] mt-3">{{ copy.inviteHint }}</p>
           </div>
-
-          <div class="mt-5 space-y-4">
-            <div class="space-y-2">
-              <label class="product-label">{{ copy.inviteRoleLabel }}</label>
-              <select v-model="inviteRole" class="admin-select" :disabled="!canManageMembers || creatingInviteLink">
-                <option v-for="role in roleOptions" :key="role" :value="role">
+          
+          <div class="p-6 md:p-8 space-y-6">
+            <div class="space-y-3">
+              <label class="product-label text-xs uppercase tracking-widest">{{ copy.inviteRoleLabel }}</label>
+              <div class="grid grid-cols-2 gap-2">
+                <button 
+                  v-for="role in roleOptions" 
+                  :key="role"
+                  type="button"
+                  class="role-opt-btn"
+                  :class="inviteRole === role ? 'role-opt-btn-active' : ''"
+                  @click="inviteRole = role"
+                >
                   {{ roleLabel[role] }}
-                </option>
-              </select>
+                </button>
+              </div>
             </div>
 
             <button
-              class="product-button-dark w-full"
+              class="product-button-primary w-full !py-4 shadow-lg shadow-[rgba(229,106,43,0.2)]"
               type="button"
               :disabled="!canManageMembers || creatingInviteLink"
               @click="handleCreateInviteLink"
@@ -356,25 +375,33 @@ watch(
               {{ creatingInviteLink ? copy.inviteGenerating : copy.inviteAction }}
             </button>
 
-            <div class="space-y-2">
-              <label class="product-label">{{ copy.inviteLinkLabel }}</label>
-              <input :value="currentInviteUrl || copy.inviteLinkEmpty" type="text" class="admin-input" readonly />
-            </div>
+            <div v-if="inviteLink || inviteMessage" class="space-y-4 pt-4 border-t border-[rgba(15,23,42,0.06)]">
+              <div class="space-y-2">
+                <label class="product-label text-[10px] uppercase tracking-widest text-[var(--ink-soft)]">{{ copy.inviteLinkLabel }}</label>
+                <div class="relative group">
+                  <input :value="currentInviteUrl || copy.inviteLinkEmpty" type="text" class="admin-input !pr-12 !bg-[rgba(15,23,42,0.02)] !text-xs font-mono" readonly />
+                  <button 
+                    v-if="currentInviteUrl"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:bg-white rounded-lg transition-colors"
+                    @click="copyInviteLink"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                  </button>
+                </div>
+              </div>
 
-            <button class="product-button-secondary w-full" type="button" :disabled="!currentInviteUrl" @click="copyInviteLink">
-              {{ copy.copyInvite }}
-            </button>
+              <div v-if="inviteMessage" class="rounded-xl bg-[var(--accent-soft)] px-4 py-3 text-xs font-bold text-[var(--accent)] text-center animate-in fade-in slide-in-from-top-1">
+                {{ inviteMessage }}
+              </div>
 
-            <div class="rounded-[18px] border border-[rgba(15,23,42,0.06)] bg-[rgba(247,247,245,0.72)] px-4 py-3 text-sm leading-7 text-[var(--ink-soft)]">
-              {{ inviteMessage || copy.inviteFlowHint }}
-            </div>
-
-            <div class="text-xs font-semibold text-[var(--ink-soft)]">
-              {{ copy.inviteExpires }}
+              <div class="flex items-center gap-2 text-[10px] font-bold text-[var(--ink-soft)] opacity-70">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                {{ copy.inviteExpires }}
+              </div>
             </div>
           </div>
         </article>
-      </div>
+      </aside>
     </section>
   </div>
 </template>
@@ -382,31 +409,39 @@ watch(
 <style lang="postcss" scoped>
 @reference "@/style.css";
 
-.workspace-meta-pill {
-  @apply inline-flex items-center rounded-full border border-[rgba(15,23,42,0.06)] bg-[rgba(247,247,245,0.88)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-main)];
+.member-avatar-box {
+  @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(15,23,42,0.05)] text-sm font-black text-[var(--ink-strong)] border border-[rgba(15,23,42,0.05)];
 }
 
-.workspace-meta-pill-dark {
-  @apply border-transparent bg-[var(--ink-strong)] text-white;
+.role-select {
+  @apply w-full border border-[rgba(15,23,42,0.1)] rounded-xl bg-white px-3 py-2 text-sm font-bold text-[var(--ink-main)] outline-none transition-all hover:border-[rgba(15,23,42,0.2)] focus:ring-2 focus:ring-[rgba(37,99,235,0.1)] appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%235f6b7a'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
 }
 
-.workspace-side-pill {
-  @apply inline-flex items-center rounded-full border border-[rgba(15,23,42,0.06)] bg-[rgba(247,247,245,0.88)] px-4 py-2 text-xs font-semibold whitespace-nowrap text-[var(--ink-main)];
+.remove-btn {
+  @apply px-4 py-2 text-xs font-black rounded-xl transition-all;
 }
 
-.workspace-side-pill-dark {
-  @apply border-transparent bg-[var(--ink-strong)] text-white;
+.remove-btn-active {
+  @apply text-[var(--danger)] bg-[rgba(220,38,38,0.05)] hover:bg-[rgba(220,38,38,0.1)];
 }
 
-.member-card {
-  @apply flex flex-row items-center gap-4 rounded-[22px] border border-[rgba(15,23,42,0.08)] bg-[rgba(255,255,255,0.96)] p-4;
+.remove-btn-disabled {
+  @apply text-[rgba(15,23,42,0.2)] cursor-not-allowed;
 }
 
-.member-avatar {
-  @apply flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[rgba(15,23,42,0.06)] text-sm font-bold text-[var(--ink-strong)];
+.role-opt-btn {
+  @apply px-3 py-2.5 rounded-xl border border-[rgba(15,23,42,0.08)] bg-white text-xs font-bold text-[var(--ink-soft)] transition-all hover:border-[var(--brand)] hover:text-[var(--brand)];
 }
 
-.member-actions {
-  @apply flex shrink-0 flex-row gap-3 items-center ml-auto;
+.role-opt-btn-active {
+  @apply border-[var(--brand)] bg-[rgba(229,106,43,0.05)] text-[var(--brand)] shadow-sm;
+}
+
+.member-row {
+  @apply border-b border-[rgba(15,23,42,0.04)] last:border-0;
 }
 </style>
