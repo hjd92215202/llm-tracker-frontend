@@ -48,6 +48,7 @@ const canvasMenu = ref<{
   y: 0,
 })
 const lastTouchTap = ref<{ nodeId: number; ts: number } | null>(null)
+const autoCreateAttemptedWorkspaceIds = new Set<number>()
 const MENU_VIEWPORT_PADDING = 12
 const MENU_POINTER_OFFSET = 10
 const MENU_FALLBACK_WIDTH = 220
@@ -70,7 +71,6 @@ const copy = computed(() =>
         noDescription: '这个节点还没有补充说明。',
         openNote: '查看笔记',
         createNote: '新建笔记',
-        manageAction: '打开编辑台',
         shareAction: '复制分享链接',
         shareDone: '分享链接已复制',
         emptyHint: '点一个节点，继续往下看内容。',
@@ -105,7 +105,6 @@ const copy = computed(() =>
         noDescription: 'No description yet.',
         openNote: 'Open note',
         createNote: 'Create note',
-        manageAction: 'Open editor',
         shareAction: 'Copy share link',
         shareDone: 'Share link copied',
         emptyHint: 'Click a node and continue into the content below.',
@@ -182,6 +181,11 @@ const menuCopy = computed(() =>
       },
 )
 const defaultNewNodeTitle = computed(() => (localeStore.isChinese ? '新节点' : 'New node'))
+const contextHint = computed(() =>
+  localeStore.isChinese ? '右键节点管理，移动端双击节点。' : 'Right-click node to manage. On touch devices, double-tap a node.',
+)
+const addRootLabel = computed(() => (localeStore.isChinese ? '新增根节点' : 'Add root'))
+const rootCreatedMessage = computed(() => (localeStore.isChinese ? '已新增根节点' : 'Root node created'))
 const selectedMoveState = computed(() => getRoadmapNodeMoveState(nodes.value, selectedNode.value?.id ?? null))
 
 const updateFloatingTopVisibility = () => {
@@ -340,15 +344,55 @@ const openNodeMenu = (node: RoadmapNode, event: MouseEvent | TouchEvent) => {
   void repositionNodeMenu('fallback')
 }
 
+const openCanvasMenu = async (event: MouseEvent) => {
+  if (!authStore.hasWriteAccess) return
+  event.preventDefault()
+
+  menuAnchorPoint.value = { x: event.clientX, y: event.clientY }
+  canvasMenu.value = {
+    open: true,
+    nodeId: null,
+    x: event.clientX,
+    y: event.clientY,
+  }
+  await repositionNodeMenu('fallback')
+}
+
 const resolveSiblingSortOrder = (parentId: number | null) =>
   nodes.value.filter((node) => (node.parent_id ?? null) === parentId).length
 
-const openFirstNode = () => {
+const createRootNode = async () => {
   if (!authStore.hasWriteAccess) return
-  router.push({
-    name: 'admin-roadmap',
-    query: { intent: 'root' },
-  })
+
+  menuBusyAction.value = 'root'
+  errorMessage.value = ''
+  try {
+    const created = await roadmapApi.createNode({
+      title: defaultNewNodeTitle.value,
+      description: null,
+      node_type: 'theory',
+      parent_id: null,
+      sort_order: resolveSiblingSortOrder(null),
+    })
+    nodes.value = sortNodes([...nodes.value, created])
+    closeNodeMenu()
+    await selectNode(created, { autoScroll: false })
+    flashActionMessage(rootCreatedMessage.value)
+    return created
+  } catch (error: any) {
+    errorMessage.value = error.message || copy.value.loadError
+    return null
+  } finally {
+    menuBusyAction.value = null
+  }
+}
+
+const maybeAutoCreateRootNode = async () => {
+  const workspaceId = authStore.activeWorkspaceId
+  if (!workspaceId || !authStore.hasWriteAccess || nodes.value.length > 0) return
+  if (autoCreateAttemptedWorkspaceIds.has(workspaceId)) return
+  autoCreateAttemptedWorkspaceIds.add(workspaceId)
+  await createRootNode()
 }
 
 const findInitialNode = () => {
@@ -365,6 +409,7 @@ const fetchRoadmap = async () => {
 
   try {
     nodes.value = (await roadmapApi.getNodes()).sort((a, b) => a.sort_order - b.sort_order)
+    await maybeAutoCreateRootNode()
 
     if (selectedNode.value && !nodes.value.some((node) => node.id === selectedNode.value?.id)) {
       selectedNode.value = null
@@ -454,6 +499,10 @@ const updateStatus = async (status: RoadmapNode['status']) => {
 
 const createNodeFromMenu = async (mode: 'child' | 'sibling') => {
   const anchor = getNodeFromMenu()
+  if (mode === 'sibling' && !anchor) {
+    await createRootNode()
+    return
+  }
   if (!anchor || !authStore.hasWriteAccess) return
   const parentId = mode === 'child' ? anchor.id : anchor.parent_id ?? null
 
@@ -620,6 +669,15 @@ const handleViewportChange = () => {
 
 watch(
   () => authStore.activeWorkspaceId,
+  (workspaceId) => {
+    if (workspaceId) {
+      autoCreateAttemptedWorkspaceIds.delete(workspaceId)
+    }
+  },
+)
+
+watch(
+  () => authStore.activeWorkspaceId,
   () => {
     fetchRoadmap()
   },
@@ -679,14 +737,6 @@ onUnmounted(() => {
           <button v-if="hasNodes" class="roadmap-action-button product-button-secondary" type="button" @click="copyShareLink">
             {{ copy.shareAction }}
           </button>
-          <button
-            v-if="authStore.hasWriteAccess"
-            class="roadmap-action-button product-button-dark"
-            type="button"
-            @click="router.push('/admin/dashboard')"
-          >
-            {{ copy.manageAction }}
-          </button>
         </template>
       </RoadmapHeroHeader>
 
@@ -711,14 +761,6 @@ onUnmounted(() => {
             </p>
 
             <div class="roadmap-empty-actions">
-              <button
-                v-if="authStore.hasWriteAccess"
-                class="roadmap-action-button product-button-dark"
-                type="button"
-                @click="openFirstNode"
-              >
-                {{ copy.firstRoadmapAction }}
-              </button>
               <button class="roadmap-action-button product-button-secondary" type="button" @click="router.push('/admin/workspace')">
                 {{ workspaceName }}
               </button>
@@ -740,6 +782,7 @@ onUnmounted(() => {
           :elements-selectable="false"
           @node-click="handleNodeClick"
           @node-context-menu="handleNodeContextMenu"
+          @pane-context-menu="openCanvasMenu"
         >
           <Background pattern-color="#e5e7eb" :gap="26" variant="dots" />
         </VueFlow>
@@ -751,6 +794,7 @@ onUnmounted(() => {
           <strong v-if="selectedNode" class="roadmap-canvas-hint-title">
             {{ selectedNode.title }}
           </strong>
+          <span class="roadmap-canvas-hint-subtext">{{ contextHint }}</span>
         </div>
       </div>
     </section>
@@ -903,6 +947,9 @@ onUnmounted(() => {
         >
           <div class="roadmap-menu-group">
             <div class="roadmap-menu-group-label">{{ menuCopy.nodeActions }}</div>
+            <button class="roadmap-menu-item" type="button" :disabled="menuBusyAction !== null" @click="createRootNode">
+              {{ addRootLabel }}
+            </button>
             <button class="roadmap-menu-item" type="button" :disabled="menuBusyAction !== null" @click="createNodeFromMenu('child')">
               {{ menuCopy.addChild }}
             </button>
@@ -1127,6 +1174,13 @@ onUnmounted(() => {
   font-size: 14px;
   font-weight: 700;
   line-height: 1.35;
+}
+
+.roadmap-canvas-hint-subtext {
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
 .roadmap-breadcrumb {
