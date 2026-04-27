@@ -734,6 +734,9 @@ onUnmounted(() => {
         :stats="heroStats"
       >
         <template #actions>
+          <button class="roadmap-action-button product-button-secondary" type="button" @click="router.push({ name: 'admin-dashboard' })">
+            {{ localeStore.isChinese ? '\u8fdb\u5165\u7ba1\u7406\u9875\u9762' : 'Open admin' }}
+          </button>
           <button v-if="hasNodes" class="roadmap-action-button product-button-secondary" type="button" @click="copyShareLink">
             {{ copy.shareAction }}
           </button>
