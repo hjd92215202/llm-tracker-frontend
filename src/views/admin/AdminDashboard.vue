@@ -166,13 +166,6 @@ watch(
             <button class="product-button-secondary" type="button" @click="router.push('/roadmap')">
               {{ copy.roadmapAction }}
             </button>
-            <button
-              class="product-button-dark"
-              type="button"
-              @click="router.push('/roadmap')"
-            >
-              {{ copy.primaryAction }}
-            </button>
             <button class="product-button-secondary" type="button" @click="router.push('/admin/notes')">
               {{ copy.secondaryAction }}
             </button>
